@@ -140,15 +140,17 @@ class SubZeroClimate(SubZeroEntity, ClimateEntity):
     def native_current_temperature(self) -> float | None:
         """Return the measured temperature, if the appliance reports one.
 
-        Many units only report setpoints, not sensors; a missing reading is
-        normal and is left as ``None`` rather than invented.
+        Many units only report setpoints, not sensors. Those units leave the
+        paired display property out of the snapshot entirely, so absence is the
+        signal: a value that is present is a real reading and is published
+        unchanged. Zero in particular is a normal freezer temperature and not a
+        placeholder, so it must not be filtered out.
         """
         key = ZONE_CURRENT_TEMP.get(self._setpoint_key)
         value = self.properties.get(key) if key else None
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             return None
-        # Zero is the app's "no reading" sentinel on units without a sensor.
-        return float(value) if value else None
+        return float(value)
 
     @property
     def native_target_temperature(self) -> float | None:

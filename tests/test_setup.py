@@ -684,3 +684,29 @@ async def test_setter_only_settings_do_not_appear_on_other_models(
     ids = {state.entity_id for state in hass.states.async_all()}
     assert "switch.36_freezer_button_tones" not in ids
     assert "switch.36_freezer_control_lock" not in ids
+
+
+async def test_zero_is_a_real_temperature_reading(hass: HomeAssistant, entry):
+    """A freezer at 0 degrees must publish it, not hide it as unavailable.
+
+    Units without a temperature sensor omit the paired display property from
+    the snapshot altogether, so a value that is present is a real reading.
+    Zero is an ordinary freezer temperature.
+    """
+    coordinator = entry.runtime_data
+    freezer = next(
+        state
+        for state in coordinator.data.appliances.values()
+        if state.appliance.name == "36 Freezer"
+    )
+    freezer.properties["frz_display_temp"] = 0
+    freezer.properties["frz_set_temp"] = -5
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+
+    climate = hass.states.get("climate.36_freezer")
+    # The instance is metric, so 0 F is shown converted; what matters is that a
+    # reading exists at all rather than being suppressed as a placeholder.
+    assert climate.attributes["current_temperature"] == -17.8
+    # Warmer than the setpoint, so the compressor is calling for cooling.
+    assert climate.attributes["hvac_action"] == "cooling"
