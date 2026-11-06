@@ -1,0 +1,43 @@
+{
+  "_os_update_time": "2026-09-21",
+  "accent_light_level": 0,
+  "active_faults": null,
+  "ap_chan": 11,
+  "ap_enc": 3,
+  "ap_rssi": -49,
+  "appliance_model": "DEU2450WDZ",
+  "appliance_name": "Main Wine",
+  "appliance_type": "17.14.2.0",
+  "build_info": {
+    "build_date": "2024-11-26T16:04:29",
+    "desc": "2.27"
+  },
+  "defer_application_updates": 0,
+  "defer_os_updates": 0,
+  "diagnostic_status": "0x11111111111",
+  "door_ajar_timeout": 5,
+  "log_level": "error",
+  "pin_window_open": true,
+  "realtime_debug": false,
+  "sabbath_on": false,
+  "service": {},
+  "service_mode": 0,
+  "service_required": false,
+  "smart_grid_on": true,
+  "time": "2026-11-06T18:45:28+00:00",
+  "unit_on": true,
+  "uptime": "757:56:3",
+  "version": {
+    "api": "5.5",
+    "appliance": "main: 11.34.13365; conf: 1.0.29; mcb_ccm_lv: 11.23.8049; uim_typeB1: 0.3.12752",
+    "architecture": "",
+    "bleapp": "3.4",
+    "fw": "2.27",
+    "os": "26.09",
+    "rtapp": "2.27"
+  },
+  "wine2_set_temp": 55,
+  "wine_door_ajar": false,
+  "wine_set_temp": 44,
+  "wine_temp_alert_on": false
+}

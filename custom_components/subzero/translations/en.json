@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sub-Zero Group account",
+        "description": "Sign in with the email and password you use for the Sub-Zero Group Owner's App.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in again",
+        "description": "Sub-Zero no longer accepts the stored sign-in. Enter your account details again.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Sub-Zero rejected the email or password.",
+      "cannot_connect": "Could not reach Sub-Zero's cloud service.",
+      "mfa_required": "This account needs a verification code, which is not supported yet.",
+      "no_appliances": "This account has no connected appliances.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This Sub-Zero account is already set up.",
+      "reauth_successful": "Sign-in succeeded."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sub-Zero Group options",
+        "data": {
+          "scan_interval": "Status check interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll appliances for state changes."
+        }
+      }
+    }
+  }
+}
