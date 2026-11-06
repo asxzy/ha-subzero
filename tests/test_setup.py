@@ -710,3 +710,16 @@ async def test_zero_is_a_real_temperature_reading(hass: HomeAssistant, entry):
     assert climate.attributes["current_temperature"] == -17.8
     # Warmer than the setpoint, so the compressor is calling for cooling.
     assert climate.attributes["hvac_action"] == "cooling"
+
+
+async def test_diagnostics_report_push_attempts(hass: HomeAssistant, entry):
+    """Report how often push has tried, so a retry loop is visible."""
+    from custom_components.subzero.diagnostics import (
+        async_get_config_entry_diagnostics,
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    # Negotiation is mocked to fail, so the client tried and never connected.
+    assert diagnostics["push_attempts"] >= 1
+    assert diagnostics["push_connected"] is False
+    assert diagnostics["push_connected_at"] is None

@@ -59,6 +59,12 @@ async def async_get_config_entry_diagnostics(
         "push_last_error": (
             coordinator.push.last_error if coordinator.push is not None else None
         ),
+        "push_attempts": (
+            coordinator.push.attempts if coordinator.push is not None else 0
+        ),
+        "push_connected_at": (
+            coordinator.push.connected_at if coordinator.push is not None else None
+        ),
         "last_update_success": coordinator.last_update_success,
         "appliances": async_redact_data(appliances, {"appliance_serial"}),
         "account": async_redact_data(

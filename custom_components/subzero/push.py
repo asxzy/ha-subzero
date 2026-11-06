@@ -41,6 +41,8 @@ from typing import Any, Final
 import aiohttp
 from yarl import URL
 
+from homeassistant.util import dt as dt_util
+
 from .api import SubZeroApiError, SubZeroClient
 from .const import (
     PUSH_HANDSHAKE_TIMEOUT,
@@ -140,6 +142,10 @@ class SubZeroPush:
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self.connected = False
         self.last_error: str | None = None
+        # Diagnostics: a reconnect that keeps failing looks the same as a slow
+        # start from the outside, so count attempts and report the last failure.
+        self.attempts = 0
+        self.connected_at: str | None = None
 
     async def run(self) -> None:
         """Connect and stream updates until cancelled."""
@@ -157,6 +163,7 @@ class SubZeroPush:
         """Reconnect with backoff until stopped."""
         delay = PUSH_RECONNECT_MIN
         while not self._stopping:
+            self.attempts += 1
             try:
                 await self._connect_once()
                 # A clean return means the connection ended; reconnect promptly.
@@ -235,6 +242,8 @@ class SubZeroPush:
                 ) != "{}":
                     raise SubZeroPushError("SignalR handshake was refused.")
                 self.connected = True
+                self.connected_at = dt_util.utcnow().isoformat()
+                self.last_error = None
                 _LOGGER.debug("Sub-Zero push connected")
                 await self._open_channels()
                 await self._consume(ws)
