@@ -93,6 +93,8 @@ MODE_SWITCHES: Final[dict[str, str]] = {
     "color_on": "Hood light colour",
     "cooktop_on": "Cooktop power",
     "cooktop_lock_on": "Cooktop lock",
+    "key_tone_on": "Button tones",
+    "user_lock_on": "Control lock",
 }
 
 

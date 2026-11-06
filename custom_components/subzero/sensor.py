@@ -25,6 +25,7 @@ from homeassistant.util import dt as dt_util
 from .capabilities import (
     FAMILY_COOKTOP,
     FAMILY_DISHWASHER,
+    FAMILY_HOOD,
     FAMILY_OVEN,
     appliance_family,
 )
@@ -107,6 +108,20 @@ SENSORS: tuple[SubZeroSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:water",
+    ),
+    SubZeroSensorDescription(
+        key="filter_count",
+        family=FAMILY_HOOD,
+        name="Filter usage",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:air-filter",
+    ),
+    SubZeroSensorDescription(
+        key="filter_max_count",
+        family=FAMILY_HOOD,
+        name="Filter allowance",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:air-filter",
     ),
     SubZeroSensorDescription(
         key="ap_rssi",

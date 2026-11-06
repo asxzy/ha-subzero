@@ -345,6 +345,14 @@ async def test_hood_entities(hass: HomeAssistant, entry):
     assert "number.wolf_hood_fan_speed" in ids
     assert "number.wolf_hood_light_brightness" in ids
     assert "number.wolf_hood_control_brightness" in ids
+    # Each favourite carries its own setter, so it is a control, not a copy of
+    # the live level.
+    assert "number.wolf_hood_favourite_fan_speed" in ids
+    assert "number.wolf_hood_favourite_light_brightness" in ids
+    assert "number.wolf_hood_favourite_light_colour" in ids
+    # Filter usage is reported, never written.
+    assert "sensor.wolf_hood_filter_usage" in ids
+    assert "sensor.wolf_hood_filter_allowance" in ids
 
 
 async def test_cooktop_entities(hass: HomeAssistant, entry):
@@ -644,3 +652,17 @@ async def test_diagnostics_report_the_push_state(hass: HomeAssistant, entry):
     assert diagnostics["push_connected"] is False
     assert diagnostics["poll_interval"] == 60
     assert "appliances" in diagnostics
+
+
+async def test_setter_only_settings_do_not_appear_on_other_models(
+    hass: HomeAssistant, entry
+):
+    """A setting is published only where the appliance reports it.
+
+    Button tones and the control lock have dedicated setters in the app, but no
+    recorded refrigeration appliance reports them, so a fridge must not grow
+    either switch.
+    """
+    ids = {state.entity_id for state in hass.states.async_all()}
+    assert "switch.36_freezer_button_tones" not in ids
+    assert "switch.36_freezer_control_lock" not in ids

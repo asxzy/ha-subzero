@@ -73,6 +73,40 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
         mode=NumberMode.SLIDER,
         icon="mdi:brightness-6",
     ),
+    # The hood stores one favourite setting of each kind, which the app recalls
+    # from a single button. They carry their own setters, so they are real
+    # controls rather than a copy of the live level.
+    SubZeroNumberDescription(
+        key="fav_fan_speed",
+        family=FAMILY_HOOD,
+        name="Favourite fan speed",
+        native_min_value=0,
+        native_max_value=4,
+        native_step=1,
+        mode=NumberMode.SLIDER,
+        icon="mdi:fan",
+    ),
+    SubZeroNumberDescription(
+        key="fav_light_percent",
+        family=FAMILY_HOOD,
+        name="Favourite light brightness",
+        native_min_value=5,
+        native_max_value=100,
+        native_step=1,
+        native_unit_of_measurement=PERCENTAGE,
+        mode=NumberMode.SLIDER,
+        icon="mdi:lightbulb",
+    ),
+    SubZeroNumberDescription(
+        key="fav_color_level",
+        family=FAMILY_HOOD,
+        name="Favourite light colour",
+        native_min_value=0,
+        native_max_value=100,
+        native_step=1,
+        mode=NumberMode.SLIDER,
+        icon="mdi:palette",
+    ),
     SubZeroNumberDescription(
         key="cav_set_temp",
         family=FAMILY_OVEN,

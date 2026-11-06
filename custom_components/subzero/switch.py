@@ -49,6 +49,10 @@ SWITCHES: tuple[SubZeroSwitchDescription, ...] = tuple(
         ("color_on", "Hood light colour"),
         ("cooktop_on", "Cooktop power"),
         ("cooktop_lock_on", "Cooktop lock"),
+        # Settings the app exposes with a dedicated setter. They are only
+        # published on models that report them.
+        ("key_tone_on", "Button tones"),
+        ("user_lock_on", "Control lock"),
     )
 )
 
@@ -78,6 +82,8 @@ ICONS: dict[str, str] = {
     "color_on": "mdi:palette",
     "cooktop_on": "mdi:stove",
     "cooktop_lock_on": "mdi:lock",
+    "key_tone_on": "mdi:bell-ring",
+    "user_lock_on": "mdi:lock-outline",
 }
 
 
