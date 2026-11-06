@@ -26,6 +26,7 @@ B2C_SCOPE: Final = f"openid offline_access {B2C_CLIENT_ID}"
 
 PLATFORMS: Final = [
     "binary_sensor",
+    "button",
     "climate",
     "number",
     "select",

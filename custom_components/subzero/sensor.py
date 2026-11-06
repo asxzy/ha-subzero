@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -19,10 +20,31 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
-from .capabilities import FAMILY_DISHWASHER, FAMILY_HOOD, FAMILY_OVEN, appliance_family
+from .capabilities import (
+    FAMILY_COOKTOP,
+    FAMILY_DISHWASHER,
+    FAMILY_OVEN,
+    appliance_family,
+)
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
+
+
+# Ordering confirmed by the app's wash-status monitor, which treats 2, 5 and 7
+# as an active cycle and reads the rest as progress through the same sequence.
+WASH_STATUSES: dict[int, str] = {
+    0: "Idle",
+    1: "Start pending",
+    2: "Running",
+    3: "Restart pending",
+    4: "Cancel pending",
+    5: "Drying",
+    6: "Complete",
+    7: "Delayed",
+    8: "Error",
+}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -30,6 +52,8 @@ class SubZeroSensorDescription(SensorEntityDescription):
     """Describe a Sub-Zero sensor."""
 
     family: str | None = None
+    # Properties whose raw integer is a state name rather than a measurement.
+    value_map: dict[int, str] | None = None
 
 
 SENSORS: tuple[SubZeroSensorDescription, ...] = (
@@ -138,17 +162,67 @@ SENSORS: tuple[SubZeroSensorDescription, ...] = (
         family=FAMILY_DISHWASHER,
     ),
     SubZeroSensorDescription(
+        key="cav_cook_timer_end_time",
+        name="Cooking timer ends",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        family=FAMILY_OVEN,
+    ),
+    SubZeroSensorDescription(
+        key="cav2_cook_timer_end_time",
+        name="Lower oven cooking timer ends",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        family=FAMILY_OVEN,
+    ),
+    SubZeroSensorDescription(
         key="wash_status",
         name="Wash status",
         icon="mdi:dishwasher",
+        device_class=SensorDeviceClass.ENUM,
+        options=list(WASH_STATUSES.values()),
+        family=FAMILY_DISHWASHER,
+        value_map=WASH_STATUSES,
+    ),
+    SubZeroSensorDescription(
+        key="delay_start_timer_end_time",
+        name="Delay start ends",
+        device_class=SensorDeviceClass.TIMESTAMP,
         family=FAMILY_DISHWASHER,
     ),
     SubZeroSensorDescription(
-        key="fan_speed",
-        name="Fan speed",
-        icon="mdi:fan",
+        key="water_filter_end_date",
+        name="Water filter expires",
+        icon="mdi:calendar-clock",
+    ),
+    SubZeroSensorDescription(
+        key="water_filter_gal_remaining",
+        name="Water filter capacity remaining",
+        native_unit_of_measurement="gal",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:water",
+    ),
+    SubZeroSensorDescription(
+        key="ice_maker_clean_stage",
+        name="Ice maker clean stage",
+        icon="mdi:spray-bottle",
+    ),
+    SubZeroSensorDescription(
+        key="cooktop_brightness",
+        name="Cooktop display brightness",
+        icon="mdi:brightness-6",
+        family=FAMILY_COOKTOP,
+    ),
+    SubZeroSensorDescription(
+        key="cooktop_volume",
+        name="Cooktop volume",
+        icon="mdi:volume-high",
+        family=FAMILY_COOKTOP,
+    ),
+    SubZeroSensorDescription(
+        key="cooktop_frequency",
+        name="Cooktop tone frequency",
+        icon="mdi:sine-wave",
         entity_category=EntityCategory.DIAGNOSTIC,
-        family=FAMILY_HOOD,
+        family=FAMILY_COOKTOP,
     ),
 )
 
@@ -156,6 +230,24 @@ SENSORS: tuple[SubZeroSensorDescription, ...] = (
 # consumable is exhausted and the appliance is asking for a replacement.
 FILTER_SENSORS = frozenset({"air_filter_pct_remaining", "water_filter_pct_remaining"})
 SENTINEL_READINGS = frozenset({255})
+
+
+def parse_appliance_time(value: Any) -> datetime | None:
+    """Read an appliance timestamp as an aware datetime.
+
+    Appliances report ``yyyy-MM-dd'T'HH:mm`` with no offset. The app sets the
+    appliance clock to the phone's local time, so a naive string is local time
+    rather than UTC.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt_util.get_default_time_zone())
+    return parsed
 
 
 def parse_uptime(value: Any) -> int | None:
@@ -230,4 +322,8 @@ class SubZeroSensor(SubZeroEntity, SensorEntity):
             return None
         if key == "uptime":
             return parse_uptime(value)
+        if self.entity_description.device_class is SensorDeviceClass.TIMESTAMP:
+            return parse_appliance_time(value)
+        if (mapping := self.entity_description.value_map) is not None:
+            return mapping.get(value)
         return value

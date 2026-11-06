@@ -7,9 +7,10 @@ Capabilities are derived from two sources of evidence:
 * the setpoint limits, which were measured by writing candidate values to real
   hardware and recording what the cloud accepted or rejected.
 
-The app's model-to-type table is deliberately not used: it maps models to
-three-segment type strings, while the cloud reports a four-segment
-``appliance_type``, so the two never reconcile.
+The appliance type is only used where a limit genuinely differs by model. The
+cloud reports four segments (``17.17.4.0``); dropping the group prefix leaves
+the three segments the Owner's App uses for its own model table and metadata
+class names (``S17C4V0Metadata``).
 """
 
 from __future__ import annotations
@@ -40,11 +41,13 @@ ZONE_DOORS: Final[dict[str, str]] = {
 FAMILY_OVEN: Final = "oven"
 FAMILY_DISHWASHER: Final = "dishwasher"
 FAMILY_HOOD: Final = "hood"
+FAMILY_COOKTOP: Final = "cooktop"
 FAMILY_REFRIGERATION: Final = "refrigeration"
 
 _OVEN_MARKERS: Final = ("cav_set_temp", "cav_cook_mode", "cav_unit_on")
 _DISHWASHER_MARKERS: Final = ("wash_cycle", "wash_status", "wash_cycle_on")
-_HOOD_MARKERS: Final = ("fan_speed", "fan_on")
+_HOOD_MARKERS: Final = ("fan_speed", "fan_on", "halo_max_percent")
+_COOKTOP_MARKERS: Final = ("cooktop_on", "cooktop_lock_on", "cooktop_pan_detected")
 
 # Properties an appliance reports but rejects on write. Exposing a control for
 # one of these produces an entity that fails every time it is used, so they are
@@ -68,22 +71,27 @@ MODE_SWITCHES: Final[dict[str, str]] = {
     "ice_maker_on": "Ice maker",
     "max_ice_on": "Max ice",
     "night_ice_on": "Night ice",
+    "ice_maker_clean_on": "Ice maker clean",
     "air_filter_on": "Air filter reminder",
     "high_use_on": "High use mode",
     "short_vacation_on": "Short vacation",
     "long_vacation_on": "Long vacation",
-    "cav_unit_on": "Oven power",
+    "winterize_on": "Winterize",
+    "internal_dispenser_enabled": "Internal dispenser",
     "cav_light_on": "Oven light",
-    "cav2_unit_on": "Lower oven power",
     "cav2_light_on": "Lower oven light",
     "heated_dry_on": "Heated dry",
     "extended_dry_on": "Extended dry",
     "high_temp_wash_on": "High temperature wash",
     "sani_rinse_on": "Sanitize rinse",
     "top_rack_only_on": "Top rack only",
-    "wash_cycle_on": "Wash cycle running",
+    # Hoods expose a fan and light as switches, with the level on separate
+    # number entities.
     "fan_on": "Fan",
-    "light_on": "Light",
+    "light_on": "Hood light",
+    "color_on": "Hood light colour",
+    "cooktop_on": "Cooktop power",
+    "cooktop_lock_on": "Cooktop lock",
 }
 
 
@@ -95,6 +103,8 @@ def appliance_family(properties: dict[str, Any]) -> str:
         return FAMILY_DISHWASHER
     if any(key in properties for key in _HOOD_MARKERS):
         return FAMILY_HOOD
+    if any(key in properties for key in _COOKTOP_MARKERS):
+        return FAMILY_COOKTOP
     return FAMILY_REFRIGERATION
 
 

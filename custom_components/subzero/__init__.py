@@ -8,7 +8,6 @@ from datetime import timedelta
 import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
@@ -18,8 +17,8 @@ from .api import (
     SubZeroClient,
     SubZeroConnectionError,
 )
-from .auth import AuthError, SubZeroAuth, Tokens
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS
+from .auth import SubZeroAuth, Tokens
+from .const import DEFAULT_SCAN_INTERVAL, PLATFORMS
 from .coordinator import SubZeroCoordinator
 from .services import async_setup_services
 

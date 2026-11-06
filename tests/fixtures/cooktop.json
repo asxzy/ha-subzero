@@ -1,0 +1,41 @@
+{
+  "_os_update_time": "2026-09-21",
+  "active_faults": null,
+  "ap_chan": 11,
+  "ap_enc": 3,
+  "ap_rssi": -45,
+  "appliance_model": "IC30TEST",
+  "appliance_name": "Wolf Cooktop",
+  "appliance_serial": "00000001",
+  "appliance_type": "17.25.1.0",
+  "build_info": {
+    "build_date": "2024-11-26T16:04:29",
+    "desc": "2.27"
+  },
+  "cooktop_auto_lock_on": false,
+  "cooktop_brightness": 80,
+  "cooktop_frequency": 2,
+  "cooktop_lock_on": false,
+  "cooktop_on": false,
+  "cooktop_pan_detected": false,
+  "cooktop_volume": 60,
+  "defer_application_updates": 0,
+  "defer_os_updates": 0,
+  "diagnostic_status": "0x11111111111",
+  "log_level": "error",
+  "pin_window_open": true,
+  "realtime_debug": false,
+  "service": {},
+  "service_mode": 0,
+  "service_required": false,
+  "smart_grid_on": true,
+  "time": "2026-11-06T18:45:27+00:00",
+  "uptime": "012:00:00",
+  "version": {
+    "api": "5.5",
+    "appliance": "main: 12.9.16573",
+    "fw": "2.27",
+    "os": "26.09",
+    "rtapp": "2.27"
+  }
+}

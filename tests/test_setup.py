@@ -70,7 +70,8 @@ async def test_door_sensors(hass: HomeAssistant, entry):
         for s in hass.states.async_all("binary_sensor")
         if s.attributes.get("device_class") == "door"
     }
-    assert len(doors) == 4  # fridge, freezer, wine, beverage
+    # fridge, freezer, wine, beverage, oven
+    assert len(doors) == 5
     assert all(d.state == "off" for d in doors.values())
 
 
@@ -190,6 +191,195 @@ async def test_reset_air_filter_requires_a_target(hass: HomeAssistant, entry):
         await hass.services.async_call(DOMAIN, "reset_air_filter", {}, blocking=True)
 
 
+async def test_oven_entities(hass: HomeAssistant, entry):
+    """An oven gets cooking controls, timers and probe readings."""
+    oven_ids = {
+        state.entity_id
+        for state in hass.states.async_all()
+        if "wolf_oven" in state.entity_id
+    }
+    assert "select.wolf_oven_cook_mode" in oven_ids
+    assert "number.wolf_oven_oven_setpoint" in oven_ids
+    assert "number.wolf_oven_probe_target" in oven_ids
+    assert "sensor.wolf_oven_oven_temperature" in oven_ids
+    assert "sensor.wolf_oven_probe_temperature" in oven_ids
+    # Starting is a command, not a state: it is a button plus a running sensor.
+    assert "button.wolf_oven_start_oven" in oven_ids
+    assert "binary_sensor.wolf_oven_oven_running" in oven_ids
+    assert "switch.wolf_oven_oven_light" in oven_ids
+    assert "binary_sensor.wolf_oven_remote_ready" in oven_ids
+    assert "binary_sensor.wolf_oven_cooking_timer_complete" in oven_ids
+
+
+async def test_dishwasher_entities(hass: HomeAssistant, entry):
+    """A dishwasher exposes its cycle choice, status and wash options."""
+    ids = {
+        state.entity_id
+        for state in hass.states.async_all()
+        if "cove_dishwasher" in state.entity_id
+    }
+    assert "select.cove_dishwasher_wash_cycle" in ids
+    assert "sensor.cove_dishwasher_wash_status" in ids
+    assert "button.cove_dishwasher_start_wash_cycle" in ids
+    assert "button.cove_dishwasher_cancel_wash_cycle" in ids
+    assert "switch.cove_dishwasher_heated_dry" in ids
+    assert "switch.cove_dishwasher_sanitize_rinse" in ids
+    assert "number.cove_dishwasher_delay_start" in ids
+    # Wash status is a translated enum, not a bare number.
+    status = hass.states.get("sensor.cove_dishwasher_wash_status")
+    assert status.state == "Idle"
+    assert "Idle" in status.attributes["options"]
+
+
+async def test_hood_entities(hass: HomeAssistant, entry):
+    """A hood separates on/off switches from level numbers."""
+    ids = {
+        state.entity_id
+        for state in hass.states.async_all()
+        if "wolf_hood" in state.entity_id
+    }
+    assert "switch.wolf_hood_fan" in ids
+    assert "switch.wolf_hood_hood_light" in ids
+    assert "number.wolf_hood_fan_speed" in ids
+    assert "number.wolf_hood_light_brightness" in ids
+    assert "number.wolf_hood_control_brightness" in ids
+
+
+async def test_cooktop_entities(hass: HomeAssistant, entry):
+    """A cooktop exposes power and lock, and only reads display settings."""
+    ids = {
+        state.entity_id
+        for state in hass.states.async_all()
+        if "wolf_cooktop" in state.entity_id
+    }
+    assert "switch.wolf_cooktop_cooktop_power" in ids
+    assert "switch.wolf_cooktop_cooktop_lock" in ids
+    assert "binary_sensor.wolf_cooktop_pan_detected" in ids
+    # The app has no setter for these, so publishing them as controls would
+    # offer a write the cloud rejects.
+    assert "number.wolf_cooktop_cooktop_volume" not in ids
+    assert "number.wolf_cooktop_cooktop_display_brightness" not in ids
+    assert "sensor.wolf_cooktop_cooktop_volume" in ids
+    assert "sensor.wolf_cooktop_cooktop_display_brightness" in ids
+
+
+async def test_timestamps_are_parsed(hass: HomeAssistant, entry):
+    """A timestamp sensor must publish a datetime, not the raw string.
+
+    Home Assistant raises a ValueError when a sensor declares the timestamp
+    device class and returns a string, so the appliance's local-time format is
+    converted to an aware datetime.
+    """
+    from datetime import datetime
+
+    from custom_components.subzero.sensor import parse_appliance_time
+
+    parsed = parse_appliance_time("2026-11-06T18:45")
+    assert isinstance(parsed, datetime)
+    assert parsed.tzinfo is not None
+    assert parse_appliance_time(None) is None
+    assert parse_appliance_time("not a time") is None
+
+
+async def test_timestamp_sensor_publishes_iso_state(hass: HomeAssistant, entry):
+    """A live timestamp must render, not raise inside the state machine."""
+    coordinator = entry.runtime_data
+    dishwasher = next(
+        state
+        for state in coordinator.data.appliances.values()
+        if state.appliance.name == "Cove Dishwasher"
+    )
+    dishwasher.properties["wash_cycle_end_time"] = "2026-11-06T21:30"
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.cove_dishwasher_wash_cycle_ends")
+    assert state is not None
+    # A naive appliance time is local time, so the instant depends on the zone.
+    from datetime import UTC, datetime
+
+    from homeassistant.util import dt as dt_util
+
+    expected = datetime(2026, 11, 6, 21, 30, tzinfo=dt_util.get_default_time_zone())
+    assert state.state == expected.astimezone(UTC).isoformat(timespec="seconds")
+
+
+async def test_unknown_enum_value_is_not_published(hass: HomeAssistant, entry):
+    """An unrecognised status becomes None rather than a raw number."""
+    coordinator = entry.runtime_data
+    dishwasher = next(
+        state
+        for state in coordinator.data.appliances.values()
+        if state.appliance.name == "Cove Dishwasher"
+    )
+    dishwasher.properties["wash_status"] = 99
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.cove_dishwasher_wash_status")
+    assert state.state == "unknown"
+
+
+async def test_dishwasher_cycle_names(hass: HomeAssistant, entry):
+    """Cycle numbers map to the names the app shows."""
+    state = hass.states.get("select.cove_dishwasher_wash_cycle")
+    assert state is not None
+    assert state.state == "Normal"
+    assert "Pots and pans" in state.attributes["options"]
+
+
+async def test_wash_cycle_is_a_command_not_a_switch(hass: HomeAssistant, entry):
+    """Starting a cycle reads back as a pulse, so it is a button.
+
+    ``wash_cycle_on`` goes false once the cycle is accepted; publishing it as a
+    switch would snap back and look like the command failed.
+    """
+    switches = {
+        state.entity_id for state in hass.states.async_all("switch")
+    }
+    assert "switch.cove_dishwasher_wash_cycle_running" not in switches
+    assert hass.states.get("button.cove_dishwasher_start_wash_cycle") is not None
+    running = hass.states.get("binary_sensor.cove_dishwasher_wash_cycle_running")
+    assert running is not None
+    assert running.attributes["device_class"] == "running"
+
+
+async def test_oven_start_needs_remote_ready(hass: HomeAssistant, entry):
+    """An oven that has not enabled remote operation offers no start button."""
+    coordinator = entry.runtime_data
+    oven = next(
+        state
+        for state in coordinator.data.appliances.values()
+        if state.appliance.name == "Wolf Oven"
+    )
+    oven.properties["cav_remote_ready"] = False
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get("button.wolf_oven_start_oven").state == "unavailable"
+
+    oven.properties["cav_remote_ready"] = True
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get("button.wolf_oven_start_oven").state != "unavailable"
+
+
+async def test_families_do_not_leak_controls(hass: HomeAssistant, entry):
+    """A hood must not get a wash cycle, nor a dishwasher an oven setpoint."""
+    hood = {
+        state.entity_id
+        for state in hass.states.async_all()
+        if "wolf_hood" in state.entity_id
+    }
+    dishwasher = {
+        state.entity_id
+        for state in hass.states.async_all()
+        if "cove_dishwasher" in state.entity_id
+    }
+    assert not any("wash_cycle" in entity_id for entity_id in hood)
+    assert not any("cook_mode" in entity_id for entity_id in dishwasher)
+    assert not any("setpoint" in entity_id for entity_id in dishwasher)
+
+
 def test_parse_uptime_handles_truncation():
     """The firmware truncates uptime to eight characters after 100 hours.
 
@@ -204,6 +394,33 @@ def test_parse_uptime_handles_truncation():
     assert parse_uptime("12:34:56") == 12 * 3600 + 34 * 60 + 56
     assert parse_uptime("garbage") is None
     assert parse_uptime(None) is None
+
+
+async def test_options_flow_sets_the_poll_interval(hass: HomeAssistant, entry):
+    """The options flow exposes only a bounded poll interval."""
+    from homeassistant.data_entry_flow import FlowResultType
+
+    from custom_components.subzero.const import MAX_SCAN_INTERVAL, MIN_SCAN_INTERVAL
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    schema = result["data_schema"].schema
+    assert [str(key) for key in schema] == ["scan_interval"]
+    validator = schema[next(iter(schema))]
+    validators = list(validator.validators)
+    (interval_range,) = [v for v in validators if hasattr(v, "min")]
+    assert (interval_range.min, interval_range.max) == (
+        MIN_SCAN_INTERVAL,
+        MAX_SCAN_INTERVAL,
+    )
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"scan_interval": 120}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options["scan_interval"] == 120
+    assert entry.runtime_data.update_interval.total_seconds() == 120
 
 
 async def test_offline_appliance_degrades_to_unavailable(hass: HomeAssistant, entry):

@@ -10,7 +10,6 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
-from homeassistant.helpers import selector
 
 from .api import SubZeroApiError, SubZeroClient, SubZeroConnectionError
 from .auth import (

@@ -18,7 +18,14 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .capabilities import MODE_SWITCHES
+from .capabilities import (
+    FAMILY_COOKTOP,
+    FAMILY_DISHWASHER,
+    FAMILY_HOOD,
+    FAMILY_OVEN,
+    MODE_SWITCHES,
+    appliance_family,
+)
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 
@@ -26,6 +33,8 @@ from .entity import SubZeroEntity
 @dataclass(frozen=True, kw_only=True)
 class SubZeroBinaryDescription(BinarySensorEntityDescription):
     """Describe a Sub-Zero binary sensor."""
+
+    family: str | None = None
 
 
 BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
@@ -93,10 +102,25 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         key="cav_at_set_temp", name="Preheated", icon="mdi:thermometer-check"
     ),
     SubZeroBinaryDescription(
+        key="cav2_at_set_temp",
+        name="Lower oven preheated",
+        icon="mdi:thermometer-check",
+    ),
+    SubZeroBinaryDescription(
         key="cav_remote_ready", name="Remote ready", icon="mdi:remote"
     ),
     SubZeroBinaryDescription(
+        key="cav2_remote_ready",
+        name="Lower oven remote ready",
+        icon="mdi:remote",
+    ),
+    SubZeroBinaryDescription(
         key="cav_probe_on", name="Probe in use", icon="mdi:thermometer"
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_probe_on",
+        name="Lower oven probe in use",
+        icon="mdi:thermometer",
     ),
     SubZeroBinaryDescription(
         key="cav_probe_at_set_temp",
@@ -104,12 +128,112 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         icon="mdi:thermometer-check",
     ),
     SubZeroBinaryDescription(
+        key="cav2_probe_at_set_temp",
+        name="Lower oven probe target reached",
+        icon="mdi:thermometer-check",
+    ),
+    SubZeroBinaryDescription(
         key="cav_gourmet_mode_on", name="Gourmet mode", icon="mdi:chef-hat"
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_gourmet_mode_on",
+        name="Lower oven gourmet mode",
+        icon="mdi:chef-hat",
+    ),
+    SubZeroBinaryDescription(
+        key="cav_mode_change_enabled",
+        name="Cooking mode change allowed",
+        icon="mdi:lock-open",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_mode_change_enabled",
+        name="Lower oven mode change allowed",
+        icon="mdi:lock-open",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SubZeroBinaryDescription(
+        key="cav_cook_timer_active",
+        name="Cooking timer running",
+        icon="mdi:timer-outline",
     ),
     SubZeroBinaryDescription(
         key="cav_cook_timer_complete",
         name="Cooking timer complete",
         icon="mdi:timer-check-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_cook_timer_active",
+        name="Lower oven cooking timer running",
+        icon="mdi:timer-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_cook_timer_complete",
+        name="Lower oven cooking timer complete",
+        icon="mdi:timer-check-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_door_ajar",
+        name="Lower oven door",
+        device_class=BinarySensorDeviceClass.DOOR,
+    ),
+    SubZeroBinaryDescription(
+        key="cav_unit_on",
+        name="Oven running",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        family=FAMILY_OVEN,
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_unit_on",
+        name="Lower oven running",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        family=FAMILY_OVEN,
+    ),
+    SubZeroBinaryDescription(
+        key="delay_start_timer_active",
+        name="Delay start counting down",
+        icon="mdi:timer-sand",
+        family=FAMILY_DISHWASHER,
+    ),
+    SubZeroBinaryDescription(
+        key="wash_cycle_on",
+        name="Wash cycle running",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        family=FAMILY_DISHWASHER,
+    ),
+    SubZeroBinaryDescription(
+        key="rinse_aid_low",
+        name="Rinse aid low",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        family=FAMILY_DISHWASHER,
+    ),
+    SubZeroBinaryDescription(
+        key="softener_low",
+        name="Water softener salt low",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        family=FAMILY_DISHWASHER,
+    ),
+    SubZeroBinaryDescription(
+        key="filter_alarm_on",
+        name="Hood filter due",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        family=FAMILY_HOOD,
+    ),
+    SubZeroBinaryDescription(
+        key="cooktop_pan_detected",
+        name="Pan detected",
+        icon="mdi:pot",
+        family=FAMILY_COOKTOP,
+    ),
+    SubZeroBinaryDescription(
+        key="ice_clean_required",
+        name="Ice maker cleaning required",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    SubZeroBinaryDescription(
+        key="ice_clean_soon",
+        name="Ice maker cleaning due soon",
+        device_class=BinarySensorDeviceClass.PROBLEM,
     ),
     SubZeroBinaryDescription(
         key="kitchen_timer_active", name="Kitchen timer active", icon="mdi:timer-outline"
@@ -159,8 +283,13 @@ async def async_setup_entry(
         coordinator.data.appliances.items() if coordinator.data else []
     ):
         properties = state.properties
+        family = appliance_family(properties)
         for description in BINARY_SENSORS:
+            # Read-only indicators only: anything the cloud accepts a write for
+            # is a switch, so the same value is never published twice.
             if description.key in MODE_SWITCHES:
+                continue
+            if description.family is not None and description.family != family:
                 continue
             if not isinstance(properties.get(description.key), bool):
                 continue

@@ -11,11 +11,7 @@ import voluptuous as vol
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import (
-    config_validation as cv,
-    device_registry as dr,
-    target as target_helpers,
-)
+from homeassistant.helpers import device_registry as dr, target as target_helpers
 
 from .capabilities import FAMILY_REFRIGERATION, appliance_family
 from .const import DOMAIN

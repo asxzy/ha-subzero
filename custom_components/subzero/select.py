@@ -8,6 +8,7 @@ from homeassistant.components.select import SelectEntity, SelectEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .capabilities import FAMILY_DISHWASHER, FAMILY_OVEN, appliance_family
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 
@@ -17,6 +18,7 @@ class SubZeroSelectDescription(SelectEntityDescription):
     """Describe a select over an integer property."""
 
     options_map: dict[str, int]
+    family: str | None = None
 
 
 SELECTS: tuple[SubZeroSelectDescription, ...] = (
@@ -48,6 +50,7 @@ SELECTS: tuple[SubZeroSelectDescription, ...] = (
     ),
     SubZeroSelectDescription(
         key="cav_cook_mode",
+        family=FAMILY_OVEN,
         name="Cook mode",
         icon="mdi:stove",
         options_map={
@@ -68,6 +71,7 @@ SELECTS: tuple[SubZeroSelectDescription, ...] = (
     ),
     SubZeroSelectDescription(
         key="cav2_cook_mode",
+        family=FAMILY_OVEN,
         name="Lower oven cook mode",
         icon="mdi:stove",
         options_map={
@@ -88,6 +92,7 @@ SELECTS: tuple[SubZeroSelectDescription, ...] = (
     ),
     SubZeroSelectDescription(
         key="wash_cycle",
+        family=FAMILY_DISHWASHER,
         name="Wash cycle",
         icon="mdi:dishwasher",
         options_map={
@@ -120,7 +125,10 @@ async def async_setup_entry(
         coordinator.data.appliances.items() if coordinator.data else []
     ):
         properties = state.properties
+        family = appliance_family(properties)
         for description in SELECTS:
+            if description.family is not None and description.family != family:
+                continue
             value = properties.get(description.key)
             if not isinstance(value, int) or isinstance(value, bool):
                 continue

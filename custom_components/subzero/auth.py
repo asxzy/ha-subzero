@@ -134,8 +134,7 @@ def _tokens_from_response(payload: dict[str, Any]) -> Tokens:
         access = payload["access_token"]
         identity = payload["id_token"]
         refresh = payload["refresh_token"]
-        expires_in = int(payload.get("expires_in", 3600))
-    except (KeyError, TypeError, ValueError) as err:
+    except (KeyError, TypeError) as err:
         raise AuthError("Sub-Zero returned an incomplete token response.") from err
     if not all(isinstance(value, str) and value for value in (access, identity, refresh)):
         raise AuthError("Sub-Zero returned an incomplete token response.")

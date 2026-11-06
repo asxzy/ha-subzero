@@ -13,6 +13,12 @@ from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .capabilities import (
+    FAMILY_DISHWASHER,
+    FAMILY_HOOD,
+    FAMILY_OVEN,
+    appliance_family,
+)
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 
@@ -21,10 +27,13 @@ from .entity import SubZeroEntity
 class SubZeroNumberDescription(NumberEntityDescription):
     """Describe a writable numeric property."""
 
+    family: str | None = None
+
 
 NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     SubZeroNumberDescription(
         key="light_percent",
+        family=FAMILY_HOOD,
         name="Light brightness",
         native_min_value=5,
         native_max_value=100,
@@ -35,6 +44,7 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="fan_speed",
+        family=FAMILY_HOOD,
         name="Fan speed",
         native_min_value=0,
         native_max_value=4,
@@ -44,6 +54,7 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="color_level",
+        family=FAMILY_HOOD,
         name="Light color",
         native_min_value=0,
         native_max_value=100,
@@ -53,6 +64,7 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="halo_max_percent",
+        family=FAMILY_HOOD,
         name="Control brightness",
         native_min_value=0,
         native_max_value=30,
@@ -63,6 +75,7 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="cav_set_temp",
+        family=FAMILY_OVEN,
         name="Oven setpoint",
         native_min_value=85,
         native_max_value=550,
@@ -72,6 +85,7 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="cav2_set_temp",
+        family=FAMILY_OVEN,
         name="Lower oven setpoint",
         native_min_value=85,
         native_max_value=550,
@@ -81,6 +95,7 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="cav_probe_set_temp",
+        family=FAMILY_OVEN,
         name="Probe target",
         native_min_value=120,
         native_max_value=210,
@@ -90,6 +105,7 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="cav2_probe_set_temp",
+        family=FAMILY_OVEN,
         name="Lower oven probe target",
         native_min_value=120,
         native_max_value=210,
@@ -111,6 +127,7 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="delay_start_timer_duration",
+        family=FAMILY_DISHWASHER,
         name="Delay start",
         native_min_value=0,
         native_max_value=720,
@@ -120,7 +137,18 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
     ),
     SubZeroNumberDescription(
         key="kitchen_timer_duration",
+        family=FAMILY_OVEN,
         name="Kitchen timer",
+        native_min_value=0,
+        native_max_value=720,
+        native_step=1,
+        mode=NumberMode.BOX,
+        icon="mdi:timer",
+    ),
+    SubZeroNumberDescription(
+        key="kitchen_timer2_duration",
+        family=FAMILY_OVEN,
+        name="Kitchen timer 2",
         native_min_value=0,
         native_max_value=720,
         native_step=1,
@@ -142,7 +170,10 @@ async def async_setup_entry(
         coordinator.data.appliances.items() if coordinator.data else []
     ):
         properties = state.properties
+        family = appliance_family(properties)
         for description in NUMBERS:
+            if description.family is not None and description.family != family:
+                continue
             value = properties.get(description.key)
             if not isinstance(value, (int, float)) or isinstance(value, bool):
                 continue

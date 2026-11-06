@@ -15,13 +15,7 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
-from .api import (
-    Appliance,
-    SubZeroApiError,
-    SubZeroAuthError,
-    SubZeroClient,
-    SubZeroConnectionError,
-)
+from .api import Appliance, SubZeroAuthError, SubZeroClient
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)

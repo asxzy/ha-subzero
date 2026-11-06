@@ -17,7 +17,6 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .capabilities import ZONE_DOORS, temperature_range, zones
-from .const import DOMAIN
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 

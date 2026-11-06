@@ -23,6 +23,10 @@ APPLIANCES = [
     ("dev-fridge", "36 Refrigerator", "17.17.4.0", "F", "fridge.json"),
     ("dev-freezer", "36 Freezer", "17.17.5.0", "F", "freezer.json"),
     ("dev-beverage", "Upper Beverage", "17.13.3.1", "F", "beverage.json"),
+    ("dev-oven", "Wolf Oven", "17.20.1.0", "F", "oven.json"),
+    ("dev-dishwasher", "Cove Dishwasher", "17.21.1.0", "F", "dishwasher.json"),
+    ("dev-hood", "Wolf Hood", "17.23.1.0", "F", "hood.json"),
+    ("dev-cooktop", "Wolf Cooktop", "17.25.1.0", "F", "cooktop.json"),
 ]
 
 

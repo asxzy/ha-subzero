@@ -89,25 +89,30 @@ def main() -> int:
 
     print(f"created entry: {result.get('title')!r}")
 
+    # The entity registry is websocket-only, so entities are identified by the
+    # appliance_type attribute every Sub-Zero entity publishes.
     print("waiting for entities...")
     deadline = time.time() + args.wait
+    states: list[dict] = []
     while time.time() < deadline:
-        status, states = api(host, token, "/api/states")
-        mine = [
-            s
-            for s in states
-            if s.get("entity_id", "").split(".")[-1]
-            and s["attributes"].get("friendly_name")
-            and "subzero" in json.dumps(s["attributes"])
+        status, payload = api(host, token, "/api/states")
+        states = [
+            state
+            for state in (payload if isinstance(payload, list) else [])
+            if "appliance_type" in (state.get("attributes") or {})
         ]
-        if mine:
+        if states:
             break
         time.sleep(5)
 
-    status, states = api(host, token, "/api/states")
-    # Identify entities by device instead of attribute text.
-    status, devices = api(host, token, "/api/config/device_registry/list") if False else (0, {})
-    return 0
+    by_domain: dict[str, int] = {}
+    for state in states:
+        domain = state["entity_id"].split(".", 1)[0]
+        by_domain[domain] = by_domain.get(domain, 0) + 1
+    print(f"entities: {len(states)}")
+    for domain in sorted(by_domain):
+        print(f"  {domain:14} {by_domain[domain]}")
+    return 0 if states else 1
 
 
 if __name__ == "__main__":

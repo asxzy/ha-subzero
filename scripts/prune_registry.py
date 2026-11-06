@@ -33,7 +33,15 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-PLATFORMS = ("binary_sensor", "climate", "number", "select", "sensor", "switch")
+PLATFORMS = (
+    "binary_sensor",
+    "button",
+    "climate",
+    "number",
+    "select",
+    "sensor",
+    "switch",
+)
 
 
 def env() -> dict[str, str]:

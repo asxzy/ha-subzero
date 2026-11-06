@@ -13,7 +13,6 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .capabilities import MODE_SWITCHES
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 
@@ -31,24 +30,25 @@ SWITCHES: tuple[SubZeroSwitchDescription, ...] = tuple(
         ("ice_maker_on", "Ice maker"),
         ("max_ice_on", "Max ice"),
         ("night_ice_on", "Night ice"),
+        ("ice_maker_clean_on", "Ice maker clean"),
         ("internal_dispenser_enabled", "Internal dispenser"),
         ("air_filter_on", "Air filter reminder"),
         ("high_use_on", "High use mode"),
         ("short_vacation_on", "Short vacation"),
         ("long_vacation_on", "Long vacation"),
         ("winterize_on", "Winterize"),
-        ("cav_unit_on", "Oven power"),
         ("cav_light_on", "Oven light"),
-        ("cav2_unit_on", "Lower oven power"),
         ("cav2_light_on", "Lower oven light"),
         ("heated_dry_on", "Heated dry"),
         ("extended_dry_on", "Extended dry"),
         ("high_temp_wash_on", "High temperature wash"),
         ("sani_rinse_on", "Sanitize rinse"),
         ("top_rack_only_on", "Top rack only"),
-        ("wash_cycle_on", "Wash cycle running"),
         ("fan_on", "Fan"),
-        ("light_on", "Light"),
+        ("light_on", "Hood light"),
+        ("color_on", "Hood light colour"),
+        ("cooktop_on", "Cooktop power"),
+        ("cooktop_lock_on", "Cooktop lock"),
     )
 )
 
@@ -58,6 +58,7 @@ ICONS: dict[str, str] = {
     "ice_maker_on": "mdi:ice-cream",
     "max_ice_on": "mdi:snowflake",
     "night_ice_on": "mdi:weather-night",
+    "ice_maker_clean_on": "mdi:spray-bottle",
     "internal_dispenser_enabled": "mdi:cup-water",
     "air_filter_on": "mdi:air-filter",
     "high_use_on": "mdi:account-multiple",
@@ -74,6 +75,9 @@ ICONS: dict[str, str] = {
     "wash_cycle_on": "mdi:dishwasher",
     "fan_on": "mdi:fan",
     "light_on": "mdi:lightbulb",
+    "color_on": "mdi:palette",
+    "cooktop_on": "mdi:stove",
+    "cooktop_lock_on": "mdi:lock",
 }
 
 
