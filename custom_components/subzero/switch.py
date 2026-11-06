@@ -122,7 +122,9 @@ class SubZeroSwitch(SubZeroEntity, SwitchEntity):
         description: SubZeroSwitchDescription,
     ) -> None:
         """Initialize the switch."""
-        super().__init__(coordinator, entry, device_id, description, key=description.key)
+        super().__init__(
+            coordinator, entry, device_id, description, key=description.key
+        )
         self._attr_unique_id = f"{device_id}_{description.key}"
         self._attr_icon = ICONS.get(description.key)
 

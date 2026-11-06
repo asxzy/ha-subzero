@@ -230,7 +230,9 @@ class SubZeroNumber(SubZeroEntity, NumberEntity):
         description: SubZeroNumberDescription,
     ) -> None:
         """Initialize the number."""
-        super().__init__(coordinator, entry, device_id, description, key=description.key)
+        super().__init__(
+            coordinator, entry, device_id, description, key=description.key
+        )
         self._attr_unique_id = f"{device_id}_{description.key}"
 
     @property

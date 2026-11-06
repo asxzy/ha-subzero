@@ -14,7 +14,12 @@ import pytest
 from custom_components.subzero.push import channel_update, handle_invocation
 
 
-def wrap(device_id: str, channel: dict | str, *, target: str = "ConnectedApplianceMessage"):
+def wrap(
+    device_id: str,
+    channel: dict | str,
+    *,
+    target: str = "ConnectedApplianceMessage",
+):
     """Build a hub frame around a channel document, as the service does."""
     inner = channel if isinstance(channel, str) else json.dumps(channel)
     payload = {"api.async_channel": inner, "timezone_id_name": "Mountain Standard Time"}

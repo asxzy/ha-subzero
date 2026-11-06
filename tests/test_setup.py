@@ -225,7 +225,9 @@ async def test_uptime_is_a_diagnostic_entity(hass: HomeAssistant, entry):
     assert row.disabled_by is not None
 
 
-async def test_optional_controls_are_read_only_binary_sensors(hass: HomeAssistant, entry):
+async def test_optional_controls_are_read_only_binary_sensors(
+    hass: HomeAssistant, entry
+):
     """States the cloud refuses to write are published as read-only sensors.
 
     Both ship disabled by default because they are diagnostics, so the registry
@@ -406,13 +408,15 @@ async def test_climate_action_needs_a_temperature_reading(hass: HomeAssistant, e
     refrigerator.properties["ref_display_temp"] = 40
     coordinator.async_update_listeners()
     await hass.async_block_till_done()
-    assert hass.states.get("climate.36_refrigerator").attributes["hvac_action"] == "idle"
+    fridge = hass.states.get("climate.36_refrigerator")
+    assert fridge.attributes["hvac_action"] == "idle"
 
     # Above it, the unit is cooling.
     refrigerator.properties["ref_display_temp"] = 46
     coordinator.async_update_listeners()
     await hass.async_block_till_done()
-    assert hass.states.get("climate.36_refrigerator").attributes["hvac_action"] == "cooling"
+    fridge = hass.states.get("climate.36_refrigerator")
+    assert fridge.attributes["hvac_action"] == "cooling"
 
 
 async def test_mode_timers_hide_when_the_mode_is_off(hass: HomeAssistant, entry):

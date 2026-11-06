@@ -351,7 +351,9 @@ class SubZeroSensor(SubZeroEntity, SensorEntity):
         description: SubZeroSensorDescription,
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator, entry, device_id, description, key=description.key)
+        super().__init__(
+            coordinator, entry, device_id, description, key=description.key
+        )
         self._attr_unique_id = f"{device_id}_{description.key}"
 
     @property
@@ -375,9 +377,8 @@ class SubZeroSensor(SubZeroEntity, SensorEntity):
         value = self.properties.get(key)
         if value is None:
             return None
-        if (gate := self.entity_description.gate) is not None and not self.properties.get(
-            gate
-        ):
+        gate = self.entity_description.gate
+        if gate is not None and not self.properties.get(gate):
             return None
         if key in FILTER_SENSORS and value in SENTINEL_READINGS:
             return None

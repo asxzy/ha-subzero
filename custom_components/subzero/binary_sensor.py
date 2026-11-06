@@ -236,7 +236,9 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         device_class=BinarySensorDeviceClass.PROBLEM,
     ),
     SubZeroBinaryDescription(
-        key="kitchen_timer_active", name="Kitchen timer active", icon="mdi:timer-outline"
+        key="kitchen_timer_active",
+        name="Kitchen timer active",
+        icon="mdi:timer-outline"
     ),
     SubZeroBinaryDescription(
         key="kitchen_timer_complete",
@@ -312,7 +314,9 @@ class SubZeroBinarySensor(SubZeroEntity, BinarySensorEntity):
         description: SubZeroBinaryDescription,
     ) -> None:
         """Initialize the binary sensor."""
-        super().__init__(coordinator, entry, device_id, description, key=description.key)
+        super().__init__(
+            coordinator, entry, device_id, description, key=description.key
+        )
         self._attr_unique_id = f"{device_id}_{description.key}"
 
     @property

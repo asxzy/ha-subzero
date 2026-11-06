@@ -127,7 +127,9 @@ def appliance_type_parts(properties: dict[str, Any]) -> tuple[int, int, int] | N
     if len(parts) == 4:
         # Drop the group prefix to get (series, category, version).
         parts = parts[1:]
-    if len(parts) != 3 or not all(part.isascii() and part.isdecimal() for part in parts):
+    if len(parts) != 3 or not all(
+        part.isascii() and part.isdecimal() for part in parts
+    ):
         return None
     return int(parts[0]), int(parts[1]), int(parts[2])
 
