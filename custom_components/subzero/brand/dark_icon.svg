@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Cold gradient: deep navy at the top into glacial blue at the base. -->
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#17415F"/>
+      <stop offset="48%" stop-color="#1E6E9C"/>
+      <stop offset="100%" stop-color="#6FD0F0"/>
+    </linearGradient>
+
+    <!-- Soft sheen across the upper left corner. -->
+    <radialGradient id="sheen" cx="0.22" cy="0.12" r="0.85">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.26"/>
+      <stop offset="55%" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- The ribbon picks up a faint cool tint so it is not flat white. -->
+    <linearGradient id="ribbon" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EAF9FF"/>
+    </linearGradient>
+
+    <clipPath id="tileClip">
+      <rect x="0" y="0" width="512" height="512" rx="116" ry="116"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#tileClip)">
+    <rect x="0" y="0" width="512" height="512" fill="url(#tile)"/>
+    <rect x="0" y="0" width="512" height="512" fill="url(#sheen)"/>
+  </g>
+
+  <!--
+    An abstract S drawn as a single stroked ribbon: two offset bowls joined at
+    the waist. It is a path rather than type so the shape is identical wherever
+    the icon is served, and it carries no lettering from any other product.
+  -->
+  <g transform="translate(0 -13) translate(256 256) scale(1.045) translate(-256 -256)">
+    <path
+       d="M 348 196
+   C 327 148 262 131 216 156
+   C 172 180 173 234 221 254
+   L 291 285
+   C 339 305 340 359 296 383
+   C 252 407 187 390 164 342"
+       fill="none"
+       stroke="url(#ribbon)"
+       stroke-width="52"
+       stroke-linecap="round"
+       stroke-linejoin="round"/>
+  </g>
+</svg>

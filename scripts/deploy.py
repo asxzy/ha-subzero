@@ -27,6 +27,7 @@ from _env import get
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "custom_components" / "subzero"
 REMOTE_CONFIG = "/config"
+REMOTE_B64 = "/tmp/subzero-deploy.b64"
 DOMAIN = "subzero"
 DEFAULT_HOST = "192.168.1.253"
 DEFAULT_USER = "hassio"
@@ -74,17 +75,93 @@ def build_archive_b64() -> str:
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
+def upload_payload(
+    client: paramiko.SSHClient, payload: str, *, chunk: int = 8192
+) -> None:
+    """Stream the base64 payload to the host without a giant command line.
+
+    Passing the payload as an argument hits the SSH channel limit once the
+    integration ships binary assets, so it is written to stdin instead. All
+    three streams are kept referenced: dropping the stderr file lets it be
+    collected, which closes the channel while bytes are still in flight.
+    """
+    stdin, stdout, stderr = client.exec_command(
+        f"sudo tee {REMOTE_B64} > /dev/null", timeout=240
+    )
+    channel = stdout.channel
+    data = payload.encode("ascii")
+    for start in range(0, len(data), chunk):
+        channel.sendall(data[start : start + chunk])
+    channel.shutdown_write()
+    status = channel.recv_exit_status()
+    error = stderr.read().decode(errors="replace").strip()
+    stdin.close()
+    if status != 0:
+        raise RuntimeError(f"upload failed (exit {status}): {error}")
+
+
+def restart_core(host: str, token: str, *, timeout: int = 60) -> None:
+    """Restart Home Assistant through the Supervisor over the websocket API.
+
+    ``ha core restart`` needs the addon's own supervisor token, which the SSH
+    addon does not hand out, so the restart goes through an authenticated
+    websocket request instead.
+    """
+    import asyncio
+
+    import aiohttp
+
+    async def _restart() -> None:
+        async with aiohttp.ClientSession() as session:
+            async with session.ws_connect(
+                f"http://{host}:8123/api/websocket", max_msg_size=0
+            ) as websocket:
+                await websocket.receive_json()
+                await websocket.send_json(
+                    {"type": "auth", "access_token": token}
+                )
+                await websocket.receive_json()
+                await websocket.send_json(
+                    {
+                        "id": 1,
+                        "type": "supervisor/api",
+                        "endpoint": "/core/restart",
+                        "method": "post",
+                    }
+                )
+                # The connection drops once the restart begins, which surfaces
+                # as a non-text frame rather than a clean close.
+                try:
+                    while True:
+                        message = await websocket.receive_json()
+                        if message.get("id") == 1:
+                            if message.get("success") is False:
+                                raise RuntimeError(message.get("error"))
+                            return
+                except (
+                    aiohttp.ClientError,
+                    aiohttp.WSMessageTypeError,
+                    TimeoutError,
+                    ValueError,
+                ):
+                    return
+
+    asyncio.run(asyncio.wait_for(_restart(), timeout))
+
+
 def deploy(*, host: str, user: str, password: str, restart: bool) -> int:
     """Upload the integration and optionally restart Home Assistant."""
     payload = build_archive_b64()
     print(f"uploading {len(payload)} base64 bytes...")
     client = connect(host, user, password)
     try:
+        upload_payload(client, payload)
         status, out, err = run(
             client,
             f"sudo rm -rf {REMOTE_CONFIG}/custom_components/{DOMAIN} && "
-            f"echo '{payload}' | base64 -d | sudo tar -xzf - "
+            f"sudo base64 -d {REMOTE_B64} | sudo tar -xzf - "
             f"-C {REMOTE_CONFIG}/custom_components --no-same-owner && "
+            f"sudo rm -f {REMOTE_B64} && "
             f"sudo chown -R root:root {REMOTE_CONFIG}/custom_components/{DOMAIN} && "
             f"ls {REMOTE_CONFIG}/custom_components/{DOMAIN}",
             timeout=240,
@@ -97,7 +174,7 @@ def deploy(*, host: str, user: str, password: str, restart: bool) -> int:
 
         if restart:
             print("restarting Home Assistant...")
-            run(client, "ha core restart", timeout=60)
+            restart_core(host, get("HA_TOKEN") or "")
             print("restart requested")
     finally:
         client.close()
