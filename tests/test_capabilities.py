@@ -87,8 +87,12 @@ def test_beverage_center_range():
 
 
 def test_crisper_tracks_refrigerator():
-    # Measured: at ref_set_temp 42 only 40-42 is accepted.
-    props = {"appliance_type": "17.17.4.0", "ref_set_temp": 42}
+    """The crisper is ref +-2, clipped to the refrigerator's own limits.
+
+    Measured: at 38 the cloud accepted 36-40. At 42 it accepted 40-42, because
+    44 is past the refrigerator's upper bound rather than the crisper's.
+    """
+    props = {"appliance_type": "17.17.4.0", "ref_set_temp": 38}
+    assert temperature_range("crisp_set_temp", props) == (36, 40)
+    props["ref_set_temp"] = 42
     assert temperature_range("crisp_set_temp", props) == (40, 42)
-    props["ref_set_temp"] = 38
-    assert temperature_range("crisp_set_temp", props) == (36, 38)

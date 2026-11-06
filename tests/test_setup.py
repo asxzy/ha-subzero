@@ -281,6 +281,30 @@ async def test_timestamps_are_parsed(hass: HomeAssistant, entry):
     assert parse_appliance_time("not a time") is None
 
 
+async def test_climate_action_needs_a_temperature_reading(hass: HomeAssistant, entry):
+    """Without a sensor there is no evidence for a cooling or idle claim."""
+    # Home Assistant omits the attribute entirely rather than publishing None.
+    assert "hvac_action" not in hass.states.get("climate.36_refrigerator").attributes
+
+    coordinator = entry.runtime_data
+    refrigerator = next(
+        state
+        for state in coordinator.data.appliances.values()
+        if state.appliance.name == "36 Refrigerator"
+    )
+    # At or below the setpoint the compressor is not calling for cooling.
+    refrigerator.properties["ref_display_temp"] = 40
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get("climate.36_refrigerator").attributes["hvac_action"] == "idle"
+
+    # Above it, the unit is cooling.
+    refrigerator.properties["ref_display_temp"] = 46
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get("climate.36_refrigerator").attributes["hvac_action"] == "cooling"
+
+
 async def test_timestamp_sensor_publishes_iso_state(hass: HomeAssistant, entry):
     """A live timestamp must render, not raise inside the state machine."""
     coordinator = entry.runtime_data

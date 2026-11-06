@@ -123,12 +123,23 @@ class SubZeroClimate(SubZeroEntity, ClimateEntity):
         return HVACMode.COOL if self.properties.get("unit_on", True) else HVACMode.OFF
 
     @property
-    def hvac_action(self) -> HVACAction:
-        """Return the current activity."""
+    def hvac_action(self) -> HVACAction | None:
+        """Return the current activity, when the appliance reports enough to say.
+
+        These units expose setpoints but no temperature sensor, so there is
+        nothing to compare a reading against. Reporting "cooling" anyway would
+        assert an activity nothing in the snapshot supports.
+        """
         if self.hvac_mode is HVACMode.OFF:
             return HVACAction.OFF
+        if self.native_current_temperature is None:
+            return None
         door = ZONE_DOORS.get(self._setpoint_key)
         if door and self.properties.get(door):
+            return HVACAction.IDLE
+        current = self.native_current_temperature
+        target = self.native_target_temperature
+        if target is not None and current is not None and current <= target:
             return HVACAction.IDLE
         return HVACAction.COOLING
 

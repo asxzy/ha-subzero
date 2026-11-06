@@ -158,25 +158,27 @@ def temperature_range(
     if key in ("wine_set_temp", "wine2_set_temp"):
         return 40, 65
     if key == "crisp_set_temp":
-        # The crisper tracks the refrigerator setpoint within a narrow band.
-        # Measured: with ref_set_temp=38 the cloud accepted 36-40; with 42 it
-        # accepted 40-42, so the band is ref-2 .. ref.
+        # The crisper follows the refrigerator setpoint within two degrees.
+        # Measured: at ref_set_temp 38 the cloud accepted 36-40, and at 42 it
+        # accepted 40-42 because 44 is past the refrigerator's own upper bound.
         bounds = temperature_range("ref_set_temp", properties)
         refrigerator = properties.get("ref_set_temp")
         if bounds is None or not isinstance(refrigerator, (int, float)):
             return None
         lower = max(bounds[0], int(refrigerator) - 2)
-        upper = min(bounds[1], int(refrigerator))
+        upper = min(bounds[1], int(refrigerator) + 2)
         return (lower, upper) if lower <= upper else None
     if key in ("ref_set_temp", "ref2_set_temp"):
         parts = appliance_type_parts(properties)
         if parts is not None:
             series, category, _version = parts
-            # Beverage centres (13.3 / 13.6) reach 55 F; refrigeration columns and
-            # wine columns stop at 42 F. Measured: 34-42 on 17.13.3.1 and
-            # 34-55 on 17.17.4.0's neighbour 17.13.3.1, see tests.
+            # Measured: a refrigeration column (17.17.4.0) accepts 34-42 and a
+            # beverage centre (17.13.3.1) accepts 34-55.
             if series == 13 and category in (3, 6):
                 return 34, 55
+            # Legacy built-in and integrated models document a 45 F maximum.
+            # No appliance on this account exercises those types, so this
+            # branch is carried from the model documentation, not measured.
             if series in (1, 2, 22):
                 return 34, 45
         return 34, 42
