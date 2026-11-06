@@ -49,7 +49,7 @@
           "scan_interval": "Status check interval (seconds)"
         },
         "data_description": {
-          "scan_interval": "How often to poll appliances for state changes."
+          "scan_interval": "How often to poll appliances. Changes are pushed as they happen, so this only recovers updates a dropped connection missed."
         }
       }
     }

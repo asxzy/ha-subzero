@@ -38,7 +38,8 @@ PLATFORMS: Final = [
 # cloud and mapped from model numbers in the app's Remote Config.
 TYPE_SEPARATOR: Final = "."
 
-# Polling fallback. Push is authoritative; this only recovers missed updates.
+# Polling interval. Push delivers changes immediately; polling recovers anything
+# a dropped connection missed.
 DEFAULT_SCAN_INTERVAL: Final = 60
 MIN_SCAN_INTERVAL: Final = 15
 MAX_SCAN_INTERVAL: Final = 600
@@ -48,6 +49,19 @@ CMD_GET: Final = "get"
 CMD_SET: Final = "set"
 CMD_OPEN_CHANNEL: Final = "open_cloud_async"
 CMD_RESET_AIR_FILTER: Final = "reset_air_filter"
+
+# Push notification transport. The account-level endpoint name is spelled with
+# the app's own capitalisation, so it is kept verbatim.
+SIGNALR_NEGOTIATE_PATH: Final = "/signal-r/negotiateUser"
+SIGNALR_HUB: Final = "connectedappliances"
+
+# Push timing. The hub drops a connection that stays quiet for about a minute,
+# and the connection token is valid for an hour; pinging well inside the first
+# keeps the second the only reason to reconnect.
+PUSH_PING_INTERVAL: Final = 15
+PUSH_HANDSHAKE_TIMEOUT: Final = 20
+PUSH_RECONNECT_MIN: Final = 5
+PUSH_RECONNECT_MAX: Final = 300
 
 # Appliance snapshot keys that are private and must never be written to
 # diagnostics. Wi-Fi strength is deliberately not listed: it is published as a

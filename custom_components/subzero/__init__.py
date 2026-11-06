@@ -71,7 +71,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: SubZeroConfigEntry) -> b
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_setup_services(hass)
 
+    # Push is the primary source of state; polling stays as a safety net for
+    # anything a dropped connection missed. Unload callbacks run last
+    # registered, first called, so the socket must be stopped before the
+    # session it rides on is closed.
     entry.async_on_unload(session.close)
+    coordinator.start_push()
+    entry.async_on_unload(coordinator.stop_push)
+
     return True
 
 

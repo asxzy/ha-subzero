@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import (
 
 from .api import Appliance, SubZeroAuthError, SubZeroClient
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .push import SubZeroPush
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,6 +69,7 @@ class SubZeroCoordinator(DataUpdateCoordinator[SubZeroData]):
         """Initialize the coordinator."""
         self.client = client
         self.appliances = {appliance.device_id: appliance for appliance in appliances}
+        self.push: SubZeroPush | None = None
         super().__init__(
             hass,
             _LOGGER,
@@ -75,6 +77,47 @@ class SubZeroCoordinator(DataUpdateCoordinator[SubZeroData]):
             config_entry=entry,
             update_interval=timedelta(seconds=scan_interval),
         )
+
+    def start_push(self) -> None:
+        """Stream appliance updates instead of relying on polling alone."""
+        if self.push is not None:
+            return
+        self.push = SubZeroPush(
+            self.client,
+            list(self.appliances),
+            on_snapshot=self._push_snapshot,
+            on_delta=self._push_delta,
+        )
+        # A config entry background task is cancelled automatically on unload.
+        self.config_entry.async_create_background_task(
+            self.hass,
+            self.push.run(),
+            f"{DOMAIN} push",
+            eager_start=True,
+        )
+
+    async def stop_push(self) -> None:
+        """Close the push connection."""
+        if self.push is not None:
+            await self.push.stop()
+            self.push = None
+    def _push_snapshot(self, device_id: str, properties: dict[str, Any]) -> None:
+        """Replace an appliance's snapshot from a pushed full state."""
+        state = self.data.get(device_id) if self.data else None
+        if state is None:
+            return
+        state.properties = properties
+        state.online = True
+        self.async_update_listeners()
+
+    def _push_delta(self, device_id: str, properties: dict[str, Any]) -> None:
+        """Merge a pushed change set into the cached snapshot."""
+        state = self.data.get(device_id) if self.data else None
+        if state is None:
+            return
+        state.properties.update(properties)
+        state.online = True
+        self.async_update_listeners()
 
     async def _async_update_data(self) -> SubZeroData:
         """Fetch the state of every appliance."""

@@ -48,7 +48,7 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 @pytest.fixture(autouse=True)
 def patch_cloud(monkeypatch):
     """Replace the cloud client with recorded snapshots."""
-    from custom_components.subzero.api import Appliance, SubZeroClient
+    from custom_components.subzero.api import Appliance, SubZeroApiError, SubZeroClient
 
     async def fake_appliances(self):
         return [
@@ -64,11 +64,16 @@ def patch_cloud(monkeypatch):
     async def fake_noop(self, *args, **kwargs):
         return None
 
+    async def fake_negotiate(self):
+        # Push is exercised by its own tests; never open a socket here.
+        raise SubZeroApiError("push disabled in tests")
+
     monkeypatch.setattr(SubZeroClient, "async_get_appliances", fake_appliances)
     monkeypatch.setattr(SubZeroClient, "async_get_state", fake_state)
     monkeypatch.setattr(SubZeroClient, "async_refresh_tokens", fake_noop)
     monkeypatch.setattr(SubZeroClient, "async_set_property", fake_noop)
     monkeypatch.setattr(SubZeroClient, "async_set_properties", fake_noop)
+    monkeypatch.setattr(SubZeroClient, "async_negotiate_push", fake_negotiate)
 
 
 def tokens() -> dict:

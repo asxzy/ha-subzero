@@ -627,3 +627,20 @@ async def test_celsius_temperature_sensor_keeps_its_scale(
     assert state is not None
     assert state.attributes["unit_of_measurement"] == "\u00b0C"
     assert float(state.state) == 4
+
+
+async def test_diagnostics_report_the_push_state(hass: HomeAssistant, entry):
+    """Diagnostics must say whether the push transport is established.
+
+    Push is the primary source of state, so a stale entity is most often a
+    dropped connection; this is the first thing support needs to see.
+    """
+    from custom_components.subzero.diagnostics import (
+        async_get_config_entry_diagnostics,
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    # The cloud client is mocked in tests, so no socket is ever opened.
+    assert diagnostics["push_connected"] is False
+    assert diagnostics["poll_interval"] == 60
+    assert "appliances" in diagnostics

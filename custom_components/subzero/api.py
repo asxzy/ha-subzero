@@ -16,6 +16,7 @@ from .const import (
     CMD_OPEN_CHANNEL,
     CMD_RESET_AIR_FILTER,
     CMD_SET,
+    SIGNALR_NEGOTIATE_PATH,
     SUBSCRIPTION_KEY,
 )
 
@@ -96,6 +97,11 @@ class SubZeroClient:
     def tokens(self) -> Tokens:
         """Return the current token bundle."""
         return self._tokens
+
+    @property
+    def session(self) -> aiohttp.ClientSession:
+        """Return the HTTP session shared with the rest of the integration."""
+        return self._session
 
     async def async_refresh_tokens(self) -> None:
         """Renew the access token if it is close to expiry."""
@@ -219,12 +225,25 @@ class SubZeroClient:
         return snapshot
 
     async def async_open_channel(self, device_id: str) -> None:
-        """Ask an appliance to start pushing state updates."""
+        """Ask an appliance to start pushing state updates.
+
+        The registration belongs to the SignalR connection that asked for it,
+        so this must run after every connect, not once at setup.
+        """
         result = await self.async_execute(device_id, CMD_OPEN_CHANNEL)
         if _rejected(result):
             raise SubZeroCommandError(
                 "The appliance rejected opening its update channel."
             )
+
+    async def async_negotiate_push(self) -> dict[str, Any]:
+        """Return the SignalR hub address and access token for this account."""
+        result = await self._request("POST", SIGNALR_NEGOTIATE_PATH)
+        if not isinstance(result, dict):
+            raise SubZeroApiError(
+                "Sub-Zero returned an invalid notification endpoint."
+            )
+        return result
 
     async def async_set_property(
         self, device_id: str, key: str, value: Any

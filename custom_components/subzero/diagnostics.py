@@ -51,6 +51,14 @@ async def async_get_config_entry_diagnostics(
             if coordinator.update_interval
             else None
         ),
+        # Push is the primary transport; this shows whether it is established,
+        # which is the first thing to check when state looks stale.
+        "push_connected": (
+            coordinator.push.connected if coordinator.push is not None else False
+        ),
+        "push_last_error": (
+            coordinator.push.last_error if coordinator.push is not None else None
+        ),
         "last_update_success": coordinator.last_update_success,
         "appliances": async_redact_data(appliances, {"appliance_serial"}),
         "account": async_redact_data(
