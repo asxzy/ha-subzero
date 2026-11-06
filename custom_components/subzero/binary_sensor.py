@@ -132,6 +132,20 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         name="Lower oven probe target reached",
         icon="mdi:thermometer-check",
     ),
+    # The app turns these into "almost there" cues: the probe is closing on its
+    # target and the timer has under a minute left.
+    SubZeroBinaryDescription(
+        key="cav_probe_within_10deg",
+        name="Probe within 10 degrees",
+        icon="mdi:thermometer-chevron-up",
+        family=FAMILY_OVEN,
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_probe_within_10deg",
+        name="Lower oven probe within 10 degrees",
+        icon="mdi:thermometer-chevron-up",
+        family=FAMILY_OVEN,
+    ),
     SubZeroBinaryDescription(
         key="cav_gourmet_mode_on", name="Gourmet mode", icon="mdi:chef-hat"
     ),
@@ -171,6 +185,18 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         key="cav2_cook_timer_complete",
         name="Lower oven cooking timer complete",
         icon="mdi:timer-check-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="cav_cook_timer_within_1min",
+        name="Cooking timer under one minute",
+        icon="mdi:timer-alert-outline",
+        family=FAMILY_OVEN,
+    ),
+    SubZeroBinaryDescription(
+        key="cav2_cook_timer_within_1min",
+        name="Lower oven cooking timer under one minute",
+        icon="mdi:timer-alert-outline",
+        family=FAMILY_OVEN,
     ),
     SubZeroBinaryDescription(
         key="cav2_door_ajar",
@@ -226,6 +252,12 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         family=FAMILY_COOKTOP,
     ),
     SubZeroBinaryDescription(
+        key="cooktop_auto_lock_on",
+        name="Auto lock",
+        icon="mdi:lock-clock",
+        family=FAMILY_COOKTOP,
+    ),
+    SubZeroBinaryDescription(
         key="ice_clean_required",
         name="Ice maker cleaning required",
         device_class=BinarySensorDeviceClass.PROBLEM,
@@ -238,12 +270,32 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
     SubZeroBinaryDescription(
         key="kitchen_timer_active",
         name="Kitchen timer active",
-        icon="mdi:timer-outline"
+        icon="mdi:timer-outline",
     ),
     SubZeroBinaryDescription(
         key="kitchen_timer_complete",
         name="Kitchen timer complete",
         icon="mdi:timer-check-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="kitchen_timer_within_1min",
+        name="Kitchen timer under one minute",
+        icon="mdi:timer-alert-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="kitchen_timer2_active",
+        name="Kitchen timer 2 active",
+        icon="mdi:timer-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="kitchen_timer2_complete",
+        name="Kitchen timer 2 complete",
+        icon="mdi:timer-check-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="kitchen_timer2_within_1min",
+        name="Kitchen timer 2 under one minute",
+        icon="mdi:timer-alert-outline",
     ),
     SubZeroBinaryDescription(
         key="delay_active", name="Ice delay active", icon="mdi:timer-sand"

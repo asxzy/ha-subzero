@@ -313,6 +313,16 @@ async def test_oven_entities(hass: HomeAssistant, entry):
     assert "switch.wolf_oven_oven_light" in oven_ids
     assert "binary_sensor.wolf_oven_remote_ready" in oven_ids
     assert "binary_sensor.wolf_oven_cooking_timer_complete" in oven_ids
+    # The app shows "almost done" cues from the within-N markers, and each
+    # timer's start is read alongside its end.
+    assert "binary_sensor.wolf_oven_cooking_timer_under_one_minute" in oven_ids
+    assert "binary_sensor.wolf_oven_probe_within_10_degrees" in oven_ids
+    assert "sensor.wolf_oven_cooking_timer_starts" in oven_ids
+    # There are two independent kitchen timers, each with its own markers.
+    assert "binary_sensor.wolf_oven_kitchen_timer_active" in oven_ids
+    assert "sensor.wolf_oven_kitchen_timer_starts" in oven_ids
+    assert "binary_sensor.wolf_oven_kitchen_timer_2_active" in oven_ids
+    assert "sensor.wolf_oven_kitchen_timer_2_starts" in oven_ids
 
 
 async def test_dishwasher_entities(hass: HomeAssistant, entry):
@@ -367,6 +377,10 @@ async def test_cooktop_entities(hass: HomeAssistant, entry):
     assert "switch.wolf_cooktop_cooktop_power" in ids
     assert "switch.wolf_cooktop_cooktop_lock" in ids
     assert "binary_sensor.wolf_cooktop_pan_detected" in ids
+    # Auto lock is a state the cooktop reports, not something the cloud exposes
+    # a write for; the lock switch remains the only control.
+    assert "binary_sensor.wolf_cooktop_auto_lock" in ids
+    assert "switch.wolf_cooktop_auto_lock" not in ids
     # The app has no setter for these, so publishing them as controls would
     # offer a write the cloud rejects.
     assert "number.wolf_cooktop_cooktop_volume" not in ids
