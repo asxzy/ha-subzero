@@ -407,6 +407,29 @@ async def test_climate_action_needs_a_temperature_reading(hass: HomeAssistant, e
     assert hass.states.get("climate.36_refrigerator").attributes["hvac_action"] == "cooling"
 
 
+async def test_mode_timers_hide_when_the_mode_is_off(hass: HomeAssistant, entry):
+    """A high-use or max-ice period is only meaningful while it is running."""
+    coordinator = entry.runtime_data
+    freezer = next(
+        state
+        for state in coordinator.data.appliances.values()
+        if state.appliance.name == "36 Freezer"
+    )
+    freezer.properties["max_ice_on"] = False
+    freezer.properties["max_ice_start_time"] = "2026-11-06T09:00"
+    freezer.properties["max_ice_end_time"] = "2026-11-06T13:00"
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.36_freezer_max_ice_starts").state == "unknown"
+
+    freezer.properties["max_ice_on"] = True
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.36_freezer_max_ice_starts").state.startswith(
+        "2026-11-06T17:00"
+    )
+
+
 async def test_timestamp_sensor_publishes_iso_state(hass: HomeAssistant, entry):
     """A live timestamp must render, not raise inside the state machine."""
     coordinator = entry.runtime_data

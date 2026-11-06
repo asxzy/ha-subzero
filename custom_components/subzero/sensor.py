@@ -54,6 +54,8 @@ class SubZeroSensorDescription(SensorEntityDescription):
     family: str | None = None
     # Properties whose raw integer is a state name rather than a measurement.
     value_map: dict[int, str] | None = None
+    # A boolean property that must be on for this value to mean anything.
+    gate: str | None = None
 
 
 SENSORS: tuple[SubZeroSensorDescription, ...] = (
@@ -194,6 +196,32 @@ SENSORS: tuple[SubZeroSensorDescription, ...] = (
         icon="mdi:calendar-clock",
     ),
     SubZeroSensorDescription(
+        key="high_use_start_time",
+        name="High use starts",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        # Only meaningful while the mode is running; the app shows the period
+        # on the high-use card and nothing when it is off.
+        gate="high_use_on",
+    ),
+    SubZeroSensorDescription(
+        key="high_use_end_time",
+        name="High use ends",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        gate="high_use_on",
+    ),
+    SubZeroSensorDescription(
+        key="max_ice_start_time",
+        name="Max ice starts",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        gate="max_ice_on",
+    ),
+    SubZeroSensorDescription(
+        key="max_ice_end_time",
+        name="Max ice ends",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        gate="max_ice_on",
+    ),
+    SubZeroSensorDescription(
         key="water_filter_gal_remaining",
         name="Water filter capacity remaining",
         native_unit_of_measurement="gal",
@@ -331,6 +359,10 @@ class SubZeroSensor(SubZeroEntity, SensorEntity):
         key = self.entity_description.key
         value = self.properties.get(key)
         if value is None:
+            return None
+        if (gate := self.entity_description.gate) is not None and not self.properties.get(
+            gate
+        ):
             return None
         if key in FILTER_SENSORS and value in SENTINEL_READINGS:
             return None
