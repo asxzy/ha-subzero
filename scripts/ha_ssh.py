@@ -14,7 +14,7 @@ import paramiko
 
 from _env import get
 
-DEFAULT_HOST = "192.168.1.253"
+DEFAULT_HOST = "homeassistant.local"
 DEFAULT_USER = "hassio"
 
 

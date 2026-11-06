@@ -29,7 +29,7 @@ SOURCE = ROOT / "custom_components" / "subzero"
 REMOTE_CONFIG = "/config"
 REMOTE_B64 = "/tmp/subzero-deploy.b64"
 DOMAIN = "subzero"
-DEFAULT_HOST = "192.168.1.253"
+DEFAULT_HOST = "homeassistant.local"
 DEFAULT_USER = "hassio"
 
 

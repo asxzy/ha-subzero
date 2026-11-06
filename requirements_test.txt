@@ -1,0 +1,8 @@
+# Test and tooling dependencies, pinned to the versions the suite passes under.
+pytest==9.0.3
+pytest-asyncio==1.4.0
+pytest-homeassistant==2026.11.0
+homeassistant==2026.11.0
+
+# Used by scripts/deploy.py and scripts/ha_ssh.py.
+paramiko==5.1.0
