@@ -1,6 +1,14 @@
-"""Tests for capability detection."""
-import json, pathlib, sys
-from custom_components.subzero.capabilities import appliance_family, zones
+"""Tests for capability detection and temperature limits."""
+
+import json
+import pathlib
+
+from custom_components.subzero.capabilities import (
+    appliance_family,
+    appliance_type_parts,
+    temperature_range,
+    zones,
+)
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 
@@ -38,3 +46,49 @@ def test_family_detection():
     assert appliance_family({"cav_set_temp": 350}) == "oven"
     assert appliance_family({"wash_cycle": 2}) == "dishwasher"
     assert appliance_family({"fan_speed": 2}) == "hood"
+
+
+def test_appliance_type_parts_drops_group_prefix():
+    # The cloud reports the app's three-segment mapping with a leading "17".
+    assert appliance_type_parts({"appliance_type": "17.17.4.0"}) == (17, 4, 0)
+    assert appliance_type_parts({"appliance_type": "17.13.3.1"}) == (13, 3, 1)
+    assert appliance_type_parts({"appliance_type": "17.22.9.1"}) == (22, 9, 1)
+
+
+def test_appliance_type_parts_accepts_three_segments():
+    assert appliance_type_parts({"appliance_type": "17.4.0"}) == (17, 4, 0)
+
+
+def test_appliance_type_parts_rejects_junk():
+    assert appliance_type_parts({"appliance_type": "x.y"}) is None
+    assert appliance_type_parts({}) is None
+
+
+# Limits below were measured by writing candidate setpoints to live hardware
+# and recording what the cloud accepted.
+def test_freezer_range():
+    assert temperature_range("frz_set_temp", {}) == (-5, 5)
+
+
+def test_wine_range():
+    assert temperature_range("wine_set_temp", {}) == (40, 65)
+    assert temperature_range("wine2_set_temp", {}) == (40, 65)
+
+
+def test_refrigerator_column_range():
+    props = {"appliance_type": "17.17.4.0", "ref_set_temp": 42}
+    assert temperature_range("ref_set_temp", props) == (34, 42)
+
+
+def test_beverage_center_range():
+    # Series 13 category 3 appliances are beverage centres and reach 55 F.
+    props = {"appliance_type": "17.13.3.1", "ref_set_temp": 43}
+    assert temperature_range("ref_set_temp", props) == (34, 55)
+
+
+def test_crisper_tracks_refrigerator():
+    # Measured: at ref_set_temp 42 only 40-42 is accepted.
+    props = {"appliance_type": "17.17.4.0", "ref_set_temp": 42}
+    assert temperature_range("crisp_set_temp", props) == (40, 42)
+    props["ref_set_temp"] = 38
+    assert temperature_range("crisp_set_temp", props) == (36, 38)

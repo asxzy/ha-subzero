@@ -13,33 +13,24 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .capabilities import zones
+from .capabilities import ZONE_DOORS, temperature_range, zones
 from .const import DOMAIN
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-# The cloud reports whole degrees Fahrenheit regardless of the unit the app shows.
-MIN_TEMP_F = -5
-MAX_TEMP_F = 70
-
+# Keyed by setpoint property: the reading that pairs with each zone.
 ZONE_CURRENT_TEMP: dict[str, str] = {
     "ref_set_temp": "ref_display_temp",
+    "ref2_set_temp": "ref2_display_temp",
     "frz_set_temp": "frz_display_temp",
     "wine_set_temp": "wine_display_temp",
     "wine2_set_temp": "wine2_display_temp",
     "crisp_set_temp": "crisp_display_temp",
-}
-
-ZONE_DOOR: dict[str, str] = {
-    "ref_set_temp": "ref_door_ajar",
-    "frz_set_temp": "frz_door_ajar",
-    "wine_set_temp": "wine_door_ajar",
-    "wine2_set_temp": "wine_door_ajar",
-    "crisp_set_temp": "ref_door_ajar",
 }
 
 
@@ -51,20 +42,20 @@ async def async_setup_entry(
     """Set up climate entities for every reported zone."""
     coordinator: SubZeroCoordinator = entry.runtime_data
     entities: list[SubZeroClimate] = []
-    for device_id, state in (coordinator.data.appliances.items() if coordinator.data else []):
+    for device_id, state in (
+        coordinator.data.appliances.items() if coordinator.data else []
+    ):
         properties = state.properties
         reported = zones(properties)
         multiple = len(reported) > 1
-        for index, (setpoint_key, label) in enumerate(reported.items()):
+        for setpoint_key, label in reported.items():
             entities.append(
                 SubZeroClimate(
                     coordinator,
                     entry,
                     device_id,
                     setpoint_key,
-                    label,
-                    index=index,
-                    multiple=multiple,
+                    label if multiple else None,
                 )
             )
     async_add_entities(entities)
@@ -73,10 +64,8 @@ async def async_setup_entry(
 class SubZeroClimate(SubZeroEntity, ClimateEntity):
     """One temperature zone of a refrigeration appliance."""
 
-    _attr_temperature_unit = UnitOfTemperature.FAHRENHEIT
+    _attr_native_temperature_unit = UnitOfTemperature.FAHRENHEIT
     _attr_target_temperature_step = 1
-    _attr_min_temp = MIN_TEMP_F
-    _attr_max_temp = MAX_TEMP_F
     _attr_hvac_modes = [HVACMode.COOL, HVACMode.OFF]
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
     _enable_turn_on_off_backwards_compat = False
@@ -87,31 +76,47 @@ class SubZeroClimate(SubZeroEntity, ClimateEntity):
         entry,
         device_id: str,
         setpoint_key: str,
-        label: str,
-        *,
-        index: int = 0,
-        multiple: bool = False,
+        label: str | None,
     ) -> None:
         """Initialize the zone."""
         super().__init__(coordinator, entry, device_id, key=setpoint_key)
         self._setpoint_key = setpoint_key
-        # A single-zone appliance needs no zone label; the device name is enough.
-        self._attr_name = label if multiple else None
+        self._attr_name = label
         self._attr_unique_id = f"{device_id}_{setpoint_key}"
 
     @property
-    def current_temperature(self) -> float | None:
-        """Return the measured temperature, if the appliance reports one."""
-        reported = self.properties.get(ZONE_CURRENT_TEMP.get(self._setpoint_key, ""))
-        if reported is None or reported == 0:
-            return None
-        return float(reported)
+    def min_temp(self) -> float:
+        """Return the lowest accepted setpoint."""
+        bounds = temperature_range(self._setpoint_key, self.properties)
+        return float(bounds[0]) if bounds else 34.0
 
     @property
-    def target_temperature(self) -> float | None:
+    def max_temp(self) -> float:
+        """Return the highest accepted setpoint."""
+        bounds = temperature_range(self._setpoint_key, self.properties)
+        return float(bounds[1]) if bounds else 42.0
+
+    @property
+    def native_current_temperature(self) -> float | None:
+        """Return the measured temperature, if the appliance reports one.
+
+        Many units only report setpoints, not sensors; a missing reading is
+        normal and is left as ``None`` rather than invented.
+        """
+        key = ZONE_CURRENT_TEMP.get(self._setpoint_key)
+        value = self.properties.get(key) if key else None
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return None
+        # Zero is the app's "no reading" sentinel on units without a sensor.
+        return float(value) if value else None
+
+    @property
+    def native_target_temperature(self) -> float | None:
         """Return the configured setpoint."""
         value = self.properties.get(self._setpoint_key)
-        return float(value) if isinstance(value, int) else None
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return None
+        return float(value)
 
     @property
     def hvac_mode(self) -> HVACMode:
@@ -123,7 +128,8 @@ class SubZeroClimate(SubZeroEntity, ClimateEntity):
         """Return the current activity."""
         if self.hvac_mode is HVACMode.OFF:
             return HVACAction.OFF
-        if self.properties.get(ZONE_DOOR.get(self._setpoint_key, "")):
+        door = ZONE_DOORS.get(self._setpoint_key)
+        if door and self.properties.get(door):
             return HVACAction.IDLE
         return HVACAction.COOLING
 
@@ -132,12 +138,20 @@ class SubZeroClimate(SubZeroEntity, ClimateEntity):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
+        value = int(round(temperature))
+        if not self.min_temp <= value <= self.max_temp:
+            raise ServiceValidationError(
+                f"This appliance accepts setpoints between "
+                f"{int(self.min_temp)} and {int(self.max_temp)} F."
+            )
         await self.coordinator.async_set_property(
-            self._device_id, self._setpoint_key, int(round(temperature))
+            self._device_id, self._setpoint_key, value
         )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Turn the appliance on or off."""
+        if hvac_mode not in self._attr_hvac_modes:
+            raise ServiceValidationError("This appliance does not support that mode.")
         await self.coordinator.async_set_property(
             self._device_id, "unit_on", hvac_mode == HVACMode.COOL
         )

@@ -19,7 +19,7 @@ from .entity import SubZeroEntity
 
 @dataclass(frozen=True, kw_only=True)
 class SubZeroNumberDescription(NumberEntityDescription):
-    """Describe a writable integer property."""
+    """Describe a writable numeric property."""
 
 
 NUMBERS: tuple[SubZeroNumberDescription, ...] = (
@@ -34,15 +34,6 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
         icon="mdi:lightbulb",
     ),
     SubZeroNumberDescription(
-        key="accent_light_level",
-        name="Accent light level",
-        native_min_value=0,
-        native_max_value=130,
-        native_step=10,
-        mode=NumberMode.SLIDER,
-        icon="mdi:lightbulb-outline",
-    ),
-    SubZeroNumberDescription(
         key="fan_speed",
         name="Fan speed",
         native_min_value=0,
@@ -52,8 +43,36 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
         icon="mdi:fan",
     ),
     SubZeroNumberDescription(
+        key="color_level",
+        name="Light color",
+        native_min_value=0,
+        native_max_value=100,
+        native_step=1,
+        mode=NumberMode.SLIDER,
+        icon="mdi:palette",
+    ),
+    SubZeroNumberDescription(
+        key="halo_max_percent",
+        name="Control brightness",
+        native_min_value=0,
+        native_max_value=30,
+        native_step=1,
+        native_unit_of_measurement=PERCENTAGE,
+        mode=NumberMode.SLIDER,
+        icon="mdi:brightness-6",
+    ),
+    SubZeroNumberDescription(
         key="cav_set_temp",
         name="Oven setpoint",
+        native_min_value=85,
+        native_max_value=550,
+        native_step=5,
+        mode=NumberMode.BOX,
+        icon="mdi:thermometer",
+    ),
+    SubZeroNumberDescription(
+        key="cav2_set_temp",
+        name="Lower oven setpoint",
         native_min_value=85,
         native_max_value=550,
         native_step=5,
@@ -70,6 +89,27 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
         icon="mdi:thermometer-probe",
     ),
     SubZeroNumberDescription(
+        key="cav2_probe_set_temp",
+        name="Lower oven probe target",
+        native_min_value=120,
+        native_max_value=210,
+        native_step=5,
+        mode=NumberMode.BOX,
+        icon="mdi:thermometer-probe",
+    ),
+    SubZeroNumberDescription(
+        key="door_ajar_timeout",
+        name="Door open delay",
+        # The property is a minute count; the app offers 1/2/5/10/15/30 but the
+        # cloud accepts any integer, so this is a number rather than a select.
+        native_min_value=0,
+        native_max_value=30,
+        native_step=1,
+        native_unit_of_measurement="min",
+        mode=NumberMode.BOX,
+        icon="mdi:door-open",
+    ),
+    SubZeroNumberDescription(
         key="delay_start_timer_duration",
         name="Delay start",
         native_min_value=0,
@@ -77,6 +117,15 @@ NUMBERS: tuple[SubZeroNumberDescription, ...] = (
         native_step=60,
         mode=NumberMode.BOX,
         icon="mdi:timer-outline",
+    ),
+    SubZeroNumberDescription(
+        key="kitchen_timer_duration",
+        name="Kitchen timer",
+        native_min_value=0,
+        native_max_value=720,
+        native_step=1,
+        mode=NumberMode.BOX,
+        icon="mdi:timer",
     ),
 )
 
@@ -86,14 +135,16 @@ async def async_setup_entry(
     entry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up number entities for reported integer properties."""
+    """Set up number entities for reported numeric properties."""
     coordinator: SubZeroCoordinator = entry.runtime_data
     entities: list[SubZeroNumber] = []
-    for device_id, state in (coordinator.data.appliances.items() if coordinator.data else []):
+    for device_id, state in (
+        coordinator.data.appliances.items() if coordinator.data else []
+    ):
         properties = state.properties
         for description in NUMBERS:
             value = properties.get(description.key)
-            if not isinstance(value, int) or isinstance(value, bool):
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
                 continue
             entities.append(
                 SubZeroNumber(coordinator, entry, device_id, description)
@@ -102,7 +153,7 @@ async def async_setup_entry(
 
 
 class SubZeroNumber(SubZeroEntity, NumberEntity):
-    """A number bound to one writable integer property."""
+    """A number bound to one writable numeric property."""
 
     entity_description: SubZeroNumberDescription
 
@@ -121,7 +172,9 @@ class SubZeroNumber(SubZeroEntity, NumberEntity):
     def native_value(self) -> float | None:
         """Return the current value."""
         value = self.properties.get(self.entity_description.key)
-        return float(value) if isinstance(value, int) else None
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return None
+        return float(value)
 
     async def async_set_native_value(self, value: float) -> None:
         """Write a new value."""

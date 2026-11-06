@@ -8,3 +8,6 @@ __pycache__/
 htmlcov/
 *.egg-info/
 .DS_Store
+
+# Test virtualenv used for the Home Assistant test harness.
+.venv-test/

@@ -61,6 +61,7 @@ def patch_cloud(monkeypatch):
     monkeypatch.setattr(SubZeroClient, "async_get_state", fake_state)
     monkeypatch.setattr(SubZeroClient, "async_refresh_tokens", fake_noop)
     monkeypatch.setattr(SubZeroClient, "async_set_property", fake_noop)
+    monkeypatch.setattr(SubZeroClient, "async_set_properties", fake_noop)
 
 
 def tokens() -> dict:

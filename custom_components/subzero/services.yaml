@@ -1,0 +1,4 @@
+reset_air_filter:
+  target:
+    device:
+      integration: subzero

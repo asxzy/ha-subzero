@@ -21,6 +21,7 @@ from .api import (
 from .auth import AuthError, SubZeroAuth, Tokens
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS
 from .coordinator import SubZeroCoordinator
+from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SubZeroConfigEntry) -> b
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_update_options))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await async_setup_services(hass)
 
     entry.async_on_unload(session.close)
     return True

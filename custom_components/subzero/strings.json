@@ -30,6 +30,17 @@
       "reauth_successful": "Sign-in succeeded."
     }
   },
+  "services": {
+    "reset_air_filter": {
+      "name": "Reset air filter",
+      "description": "Reset the air filter reminder on a refrigeration appliance.",
+      "target": {
+        "device": {
+          "integration": "subzero"
+        }
+      }
+    }
+  },
   "options": {
     "step": {
       "init": {

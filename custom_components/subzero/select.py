@@ -24,13 +24,13 @@ SELECTS: tuple[SubZeroSelectDescription, ...] = (
         key="crisp_temp_mode",
         name="Crisper mode",
         icon="mdi:food-apple",
-        options_map={"Manual": 0, "Automatic": 1},
+        options_map={"Automatic": 1, "Manual": 0},
     ),
     SubZeroSelectDescription(
         key="humidity_control",
         name="Humidity control",
         icon="mdi:water-percent",
-        options_map={"Normal": 1, "Enhanced": 2},
+        options_map={"Normal": 1, "Enhanced": 2, "Low": 3},
     ),
     SubZeroSelectDescription(
         key="night_mode",
@@ -42,22 +42,33 @@ SELECTS: tuple[SubZeroSelectDescription, ...] = (
         key="accent_light_level",
         name="Accent light",
         icon="mdi:lightbulb-outline",
-        options_map={"Off": 0, "Low": 110, "Medium": 120, "High": 130},
-    ),
-    SubZeroSelectDescription(
-        key="door_ajar_timeout",
-        name="Door alarm delay",
-        icon="mdi:door-open",
-        options_map={
-            "1 minute": 1,
-            "2 minutes": 2,
-            "5 minutes": 5,
-            "10 minutes": 10,
-        },
+        # Measured: the cloud accepts 0 and 100-130, which is the app's
+        # Off/On/Low/Medium/High enum.
+        options_map={"Off": 0, "On": 100, "Low": 110, "Medium": 120, "High": 130},
     ),
     SubZeroSelectDescription(
         key="cav_cook_mode",
         name="Cook mode",
+        icon="mdi:stove",
+        options_map={
+            "Off": 0,
+            "Bake": 1,
+            "Roast": 2,
+            "Broil": 3,
+            "Bake stone": 4,
+            "Convection bake": 5,
+            "Convection roast": 6,
+            "Convection broil": 7,
+            "Convection": 8,
+            "Proof": 9,
+            "Dehydrate": 10,
+            "Self clean": 11,
+            "Warm": 12,
+        },
+    ),
+    SubZeroSelectDescription(
+        key="cav2_cook_mode",
+        name="Lower oven cook mode",
         icon="mdi:stove",
         options_map={
             "Off": 0,
@@ -105,11 +116,17 @@ async def async_setup_entry(
     """Set up select entities for reported integer properties."""
     coordinator: SubZeroCoordinator = entry.runtime_data
     entities: list[SubZeroSelect] = []
-    for device_id, state in (coordinator.data.appliances.items() if coordinator.data else []):
+    for device_id, state in (
+        coordinator.data.appliances.items() if coordinator.data else []
+    ):
         properties = state.properties
         for description in SELECTS:
             value = properties.get(description.key)
             if not isinstance(value, int) or isinstance(value, bool):
+                continue
+            # Only publish a select when the current value maps onto an option,
+            # otherwise the entity would sit at an unknown state.
+            if value not in description.options_map.values():
                 continue
             entities.append(
                 SubZeroSelect(coordinator, entry, device_id, description)
@@ -138,7 +155,7 @@ class SubZeroSelect(SubZeroEntity, SelectEntity):
     def current_option(self) -> str | None:
         """Return the option matching the current value."""
         value = self.properties.get(self.entity_description.key)
-        if not isinstance(value, int):
+        if not isinstance(value, int) or isinstance(value, bool):
             return None
         for label, raw in self.entity_description.options_map.items():
             if raw == value:

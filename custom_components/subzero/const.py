@@ -48,8 +48,9 @@ CMD_SET: Final = "set"
 CMD_OPEN_CHANNEL: Final = "open_cloud_async"
 CMD_RESET_AIR_FILTER: Final = "reset_air_filter"
 
-# Appliance snapshot keys that are not useful/are private and must never be
-# published as entities or written to diagnostics.
+# Appliance snapshot keys that are private and must never be written to
+# diagnostics. Wi-Fi strength is deliberately not listed: it is published as a
+# diagnostic sensor, so it is not sensitive here.
 PRIVATE_KEYS: Final = frozenset(
     {
         "pin",
@@ -58,7 +59,6 @@ PRIVATE_KEYS: Final = frozenset(
         "ipv4_addr",
         "ap_chan",
         "ap_enc",
-        "ap_rssi",
         "remote_svc_reg_token",
     }
 )

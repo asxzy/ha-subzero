@@ -1,14 +1,19 @@
-"""Switches for the Sub-Zero Group integration."""
+"""Switches for the Sub-Zero Group integration.
+
+Only properties that the cloud accepts a write for are published here; the
+writable set was verified by writing each property back to its current value
+and recording whether the appliance accepted or rejected the command.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .capabilities import MODE_SWITCHES
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 
@@ -18,85 +23,58 @@ class SubZeroSwitchDescription(SwitchEntityDescription):
     """Describe a writable boolean property."""
 
 
-SWITCHES: tuple[SubZeroSwitchDescription, ...] = (
-    SubZeroSwitchDescription(key="unit_on", name="Power", icon="mdi:power"),
-    SubZeroSwitchDescription(
-        key="sabbath_on", name="Sabbath mode", icon="mdi:candle"
-    ),
-    SubZeroSwitchDescription(
-        key="ice_maker_on", name="Ice maker", icon="mdi:ice-cream"
-    ),
-    SubZeroSwitchDescription(key="max_ice_on", name="Max ice", icon="mdi:snowflake"),
-    SubZeroSwitchDescription(
-        key="night_ice_on", name="Night ice", icon="mdi:weather-night"
-    ),
-    SubZeroSwitchDescription(
-        key="internal_dispenser_enabled",
-        name="Internal dispenser",
-        icon="mdi:cup-water",
-    ),
-    SubZeroSwitchDescription(
-        key="air_filter_on", name="Air filter reminder", icon="mdi:air-filter"
-    ),
-    SubZeroSwitchDescription(
-        key="high_use_on", name="High use mode", icon="mdi:account-multiple"
-    ),
-    SubZeroSwitchDescription(
-        key="short_vacation_on",
-        name="Short vacation",
-        icon="mdi:bag-suitcase",
-    ),
-    SubZeroSwitchDescription(
-        key="long_vacation_on",
-        name="Long vacation",
-        icon="mdi:bag-suitcase-outline",
-    ),
-    SubZeroSwitchDescription(
-        key="winterize_on", name="Winterize", icon="mdi:snowflake-alert"
-    ),
-    SubZeroSwitchDescription(
-        key="wine_temp_alert_on",
-        name="Wine temperature alert",
-        icon="mdi:thermometer-alert",
-    ),
-    SubZeroSwitchDescription(
-        key="smart_grid_on",
-        name="Smart grid",
-        icon="mdi:transmission-tower",
-        entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
-    ),
-    # Ovens
-    SubZeroSwitchDescription(key="cav_unit_on", name="Oven power", icon="mdi:power"),
-    SubZeroSwitchDescription(
-        key="cav_light_on", name="Oven light", icon="mdi:lightbulb"
-    ),
-    SubZeroSwitchDescription(
-        key="cav2_unit_on", name="Lower oven power", icon="mdi:power"
-    ),
-    SubZeroSwitchDescription(
-        key="cav2_light_on", name="Lower oven light", icon="mdi:lightbulb"
-    ),
-    # Dishwashers
-    SubZeroSwitchDescription(
-        key="heated_dry_on", name="Heated dry", icon="mdi:heat-wave"
-    ),
-    SubZeroSwitchDescription(
-        key="extended_dry_on", name="Extended dry", icon="mdi:weather-windy"
-    ),
-    SubZeroSwitchDescription(
-        key="high_temp_wash_on", name="High temperature wash", icon="mdi:thermometer-high"
-    ),
-    SubZeroSwitchDescription(
-        key="sani_rinse_on", name="Sanitize rinse", icon="mdi:shield-check"
-    ),
-    SubZeroSwitchDescription(
-        key="top_rack_only_on", name="Top rack only", icon="mdi:silverware-fork-knife"
-    ),
-    # Hoods
-    SubZeroSwitchDescription(key="fan_on", name="Fan", icon="mdi:fan"),
-    SubZeroSwitchDescription(key="light_on", name="Light", icon="mdi:lightbulb"),
+SWITCHES: tuple[SubZeroSwitchDescription, ...] = tuple(
+    SubZeroSwitchDescription(key=key, name=name)
+    for key, name in (
+        ("unit_on", "Power"),
+        ("sabbath_on", "Sabbath mode"),
+        ("ice_maker_on", "Ice maker"),
+        ("max_ice_on", "Max ice"),
+        ("night_ice_on", "Night ice"),
+        ("internal_dispenser_enabled", "Internal dispenser"),
+        ("air_filter_on", "Air filter reminder"),
+        ("high_use_on", "High use mode"),
+        ("short_vacation_on", "Short vacation"),
+        ("long_vacation_on", "Long vacation"),
+        ("winterize_on", "Winterize"),
+        ("cav_unit_on", "Oven power"),
+        ("cav_light_on", "Oven light"),
+        ("cav2_unit_on", "Lower oven power"),
+        ("cav2_light_on", "Lower oven light"),
+        ("heated_dry_on", "Heated dry"),
+        ("extended_dry_on", "Extended dry"),
+        ("high_temp_wash_on", "High temperature wash"),
+        ("sani_rinse_on", "Sanitize rinse"),
+        ("top_rack_only_on", "Top rack only"),
+        ("wash_cycle_on", "Wash cycle running"),
+        ("fan_on", "Fan"),
+        ("light_on", "Light"),
+    )
 )
+
+ICONS: dict[str, str] = {
+    "unit_on": "mdi:power",
+    "sabbath_on": "mdi:candle",
+    "ice_maker_on": "mdi:ice-cream",
+    "max_ice_on": "mdi:snowflake",
+    "night_ice_on": "mdi:weather-night",
+    "internal_dispenser_enabled": "mdi:cup-water",
+    "air_filter_on": "mdi:air-filter",
+    "high_use_on": "mdi:account-multiple",
+    "short_vacation_on": "mdi:bag-suitcase",
+    "long_vacation_on": "mdi:bag-suitcase-outline",
+    "winterize_on": "mdi:snowflake-alert",
+    "cav_light_on": "mdi:lightbulb",
+    "cav2_light_on": "mdi:lightbulb",
+    "heated_dry_on": "mdi:heat-wave",
+    "extended_dry_on": "mdi:weather-windy",
+    "high_temp_wash_on": "mdi:thermometer-high",
+    "sani_rinse_on": "mdi:shield-check",
+    "top_rack_only_on": "mdi:silverware-fork-knife",
+    "wash_cycle_on": "mdi:dishwasher",
+    "fan_on": "mdi:fan",
+    "light_on": "mdi:lightbulb",
+}
 
 
 async def async_setup_entry(
@@ -104,10 +82,12 @@ async def async_setup_entry(
     entry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up switches for reported boolean properties."""
+    """Set up switches for verified writable boolean properties."""
     coordinator: SubZeroCoordinator = entry.runtime_data
     entities: list[SubZeroSwitch] = []
-    for device_id, state in (coordinator.data.appliances.items() if coordinator.data else []):
+    for device_id, state in (
+        coordinator.data.appliances.items() if coordinator.data else []
+    ):
         properties = state.properties
         for description in SWITCHES:
             value = properties.get(description.key)
@@ -134,6 +114,7 @@ class SubZeroSwitch(SubZeroEntity, SwitchEntity):
         """Initialize the switch."""
         super().__init__(coordinator, entry, device_id, description, key=description.key)
         self._attr_unique_id = f"{device_id}_{description.key}"
+        self._attr_icon = ICONS.get(description.key)
 
     @property
     def is_on(self) -> bool | None:

@@ -236,6 +236,23 @@ class SubZeroClient:
                 f"The appliance rejected the {key} setting."
             )
 
+    async def async_set_properties(
+        self, device_id: str, properties: dict[str, Any]
+    ) -> None:
+        """Write several properties to an appliance in one command.
+
+        The cloud applies a multi-key ``set`` atomically, which avoids a brief
+        inconsistent state where one property has changed and another has not.
+        """
+        if not properties:
+            return
+        result = await self.async_execute(device_id, CMD_SET, dict(properties))
+        if _rejected(result):
+            names = ", ".join(sorted(properties))
+            raise SubZeroCommandError(
+                f"The appliance rejected the {names} setting."
+            )
+
     async def async_reset_air_filter(self, device_id: str) -> None:
         """Reset an appliance's air filter counter."""
         result = await self.async_execute(device_id, CMD_RESET_AIR_FILTER)

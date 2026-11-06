@@ -9,6 +9,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import Appliance
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import ApplianceState, SubZeroCoordinator
 
@@ -38,7 +39,9 @@ class SubZeroEntity(CoordinatorEntity[SubZeroCoordinator]):
     @property
     def _state(self) -> ApplianceState | None:
         """Return the current appliance state."""
-        return self.coordinator.data.get(self._device_id) if self.coordinator.data else None
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get(self._device_id)
 
     @property
     def available(self) -> bool:
@@ -47,7 +50,7 @@ class SubZeroEntity(CoordinatorEntity[SubZeroCoordinator]):
         return bool(super().available and state is not None and state.online)
 
     @property
-    def appliance(self):
+    def appliance(self) -> Appliance:
         """Return the appliance metadata."""
         state = self._state
         if state is not None:
@@ -88,5 +91,4 @@ class SubZeroEntity(CoordinatorEntity[SubZeroCoordinator]):
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return the appliance type alongside each value."""
-        appliance = self.appliance
-        return {"appliance_type": appliance.appliance_type}
+        return {"appliance_type": self.appliance.appliance_type}

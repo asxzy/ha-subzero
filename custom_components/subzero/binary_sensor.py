@@ -1,4 +1,9 @@
-"""Binary sensors for the Sub-Zero Group integration."""
+"""Binary sensors for the Sub-Zero Group integration.
+
+These cover read-only state: door contacts, fault flags, and indicators whose
+properties the cloud rejects writes for. Anything writable is a switch instead,
+so no value is published twice.
+"""
 
 from __future__ import annotations
 
@@ -13,6 +18,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .capabilities import MODE_SWITCHES
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 
@@ -29,6 +35,11 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         device_class=BinarySensorDeviceClass.DOOR,
     ),
     SubZeroBinaryDescription(
+        key="ref2_door_ajar",
+        name="Refrigerator drawer",
+        device_class=BinarySensorDeviceClass.DOOR,
+    ),
+    SubZeroBinaryDescription(
         key="frz_door_ajar",
         name="Freezer door",
         device_class=BinarySensorDeviceClass.DOOR,
@@ -39,40 +50,19 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         device_class=BinarySensorDeviceClass.DOOR,
     ),
     SubZeroBinaryDescription(
-        key="ice_maker_on",
-        name="Ice maker",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        icon="mdi:ice-cream",
+        key="wine2_door_ajar",
+        name="Wine door 2",
+        device_class=BinarySensorDeviceClass.DOOR,
     ),
     SubZeroBinaryDescription(
-        key="max_ice_on",
-        name="Max ice",
-        icon="mdi:snowflake",
+        key="cav_door_ajar",
+        name="Oven door",
+        device_class=BinarySensorDeviceClass.DOOR,
     ),
     SubZeroBinaryDescription(
-        key="night_ice_on",
-        name="Night ice",
-        icon="mdi:weather-night",
-    ),
-    SubZeroBinaryDescription(
-        key="sabbath_on",
-        name="Sabbath mode",
-        icon="mdi:candle",
-    ),
-    SubZeroBinaryDescription(
-        key="high_use_on",
-        name="High use mode",
-        icon="mdi:account-multiple",
-    ),
-    SubZeroBinaryDescription(
-        key="short_vacation_on",
-        name="Short vacation",
-        icon="mdi:bag-suitcase",
-    ),
-    SubZeroBinaryDescription(
-        key="long_vacation_on",
-        name="Long vacation",
-        icon="mdi:bag-suitcase-outline",
+        key="ice_door_ajar",
+        name="Ice maker door",
+        device_class=BinarySensorDeviceClass.DOOR,
     ),
     SubZeroBinaryDescription(
         key="service_required",
@@ -85,9 +75,60 @@ BINARY_SENSORS: tuple[SubZeroBinaryDescription, ...] = (
         device_class=BinarySensorDeviceClass.PROBLEM,
     ),
     SubZeroBinaryDescription(
-        key="air_filter_on",
-        name="Air filter",
-        icon="mdi:air-filter",
+        key="failsafe_on",
+        name="Ice maker failsafe",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    SubZeroBinaryDescription(
+        key="clean_soon_on",
+        name="Ice maker cleaning due soon",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    SubZeroBinaryDescription(
+        key="clean_now_on",
+        name="Ice maker cleaning due",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    SubZeroBinaryDescription(
+        key="cav_at_set_temp", name="Preheated", icon="mdi:thermometer-check"
+    ),
+    SubZeroBinaryDescription(
+        key="cav_remote_ready", name="Remote ready", icon="mdi:remote"
+    ),
+    SubZeroBinaryDescription(
+        key="cav_probe_on", name="Probe in use", icon="mdi:thermometer"
+    ),
+    SubZeroBinaryDescription(
+        key="cav_probe_at_set_temp",
+        name="Probe target reached",
+        icon="mdi:thermometer-check",
+    ),
+    SubZeroBinaryDescription(
+        key="cav_gourmet_mode_on", name="Gourmet mode", icon="mdi:chef-hat"
+    ),
+    SubZeroBinaryDescription(
+        key="cav_cook_timer_complete",
+        name="Cooking timer complete",
+        icon="mdi:timer-check-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="kitchen_timer_active", name="Kitchen timer active", icon="mdi:timer-outline"
+    ),
+    SubZeroBinaryDescription(
+        key="kitchen_timer_complete",
+        name="Kitchen timer complete",
+        icon="mdi:timer-check-outline",
+    ),
+    SubZeroBinaryDescription(
+        key="delay_active", name="Ice delay active", icon="mdi:timer-sand"
+    ),
+    SubZeroBinaryDescription(
+        key="delay_recurring", name="Ice delay repeats daily", icon="mdi:repeat"
+    ),
+    SubZeroBinaryDescription(
+        key="water_filter_inserted",
+        name="Water filter inserted",
+        icon="mdi:water-check",
     ),
     SubZeroBinaryDescription(
         key="pin_window_open",
@@ -111,15 +152,17 @@ async def async_setup_entry(
     entry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up binary sensors for reported properties."""
+    """Set up binary sensors for read-only boolean properties."""
     coordinator: SubZeroCoordinator = entry.runtime_data
     entities: list[SubZeroBinarySensor] = []
-    for device_id, state in (coordinator.data.appliances.items() if coordinator.data else []):
+    for device_id, state in (
+        coordinator.data.appliances.items() if coordinator.data else []
+    ):
         properties = state.properties
         for description in BINARY_SENSORS:
-            if description.key not in properties:
+            if description.key in MODE_SWITCHES:
                 continue
-            if not isinstance(properties[description.key], bool):
+            if not isinstance(properties.get(description.key), bool):
                 continue
             entities.append(
                 SubZeroBinarySensor(coordinator, entry, device_id, description)
