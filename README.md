@@ -7,6 +7,12 @@ as native Home Assistant entities rather than raw property dictionaries.
 Push is the primary transport: the cloud notifies the integration as state
 changes, and a periodic poll only recovers anything a dropped connection missed.
 
+<p align="center">
+  <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=asxzy&repository=ha-subzero&category=integration">
+    <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open this repository in HACS, or the Marketplace in Home Assistant 2026.11+">
+  </a>
+</p>
+
 ## Supported appliances
 
 Entity sets are derived from the properties an appliance actually reports, so a
@@ -33,7 +39,9 @@ Requires Home Assistant 2026.11 or newer.
 2. Restart Home Assistant.
 3. Add the integration and sign in with your Sub-Zero Group account.
 
-Or install it as a custom repository with HACS.
+Or install it as a custom repository with HACS, or with the Marketplace in Home
+Assistant 2026.11 and newer. Use the button at the top of this page to add it in
+one step.
 
 ## Setup
 
