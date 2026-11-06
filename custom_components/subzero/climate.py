@@ -15,8 +15,10 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.temperature import display_temp
+from homeassistant.util.unit_conversion import TemperatureConverter
 
-from .capabilities import ZONE_DOORS, temperature_range, zones
+from .capabilities import ZONE_DOORS, appliance_unit, temperature_range, zones
 from .coordinator import SubZeroCoordinator
 from .entity import SubZeroEntity
 
@@ -63,7 +65,6 @@ async def async_setup_entry(
 class SubZeroClimate(SubZeroEntity, ClimateEntity):
     """One temperature zone of a refrigeration appliance."""
 
-    _attr_native_temperature_unit = UnitOfTemperature.FAHRENHEIT
     _attr_target_temperature_step = 1
     _attr_hvac_modes = [HVACMode.COOL, HVACMode.OFF]
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
@@ -84,16 +85,56 @@ class SubZeroClimate(SubZeroEntity, ClimateEntity):
         self._attr_unique_id = f"{device_id}_{setpoint_key}"
 
     @property
+    def native_temperature_unit(self) -> str:
+        """Return the unit the cloud reports this appliance's temperatures in.
+
+        The snapshot carries the appliance's own scale, so setpoints are read
+        and written in that unit. Home Assistant converts to the user's
+        preferred unit for display.
+        """
+        if self.appliance.temperature_unit == "C":
+            return UnitOfTemperature.CELSIUS
+        return UnitOfTemperature.FAHRENHEIT
+
+    def _bounds(self) -> tuple[float, float]:
+        """Return the accepted setpoint band in the appliance's own unit."""
+        unit = self.appliance.temperature_unit
+        bounds = temperature_range(self._setpoint_key, self.properties, unit)
+        if bounds is None:
+            bounds = (34, 42)
+        return appliance_unit(bounds, unit)
+
+    def _widened(self, bound: float, *, upper: bool) -> float:
+        """Widen a bound so every value Home Assistant can display is accepted.
+
+        Home Assistant validates a service call against ``min_temp`` and
+        ``max_temp`` *before* the entity sees it, converting the requested
+        display value into native units first. It also rounds the advertised
+        bound for display. When rounding pushes a bound outward (40-65 F shows
+        as 4.4-18.3 C, but 42 F shows as 5.6 C, which converts back to 42.08 F)
+        the displayed maximum would be rejected by the range it was read from.
+        The bound is therefore extended to whatever the rounded display value
+        converts back to, and no further: the displayed number is unchanged.
+        """
+        native = self.native_temperature_unit
+        user = self.hass.config.units.temperature_unit
+        if user == native:
+            return bound
+        shown = display_temp(self.hass, bound, native, self.precision)
+        if shown is None:
+            return bound
+        round_trip = TemperatureConverter.convert(shown, user, native)
+        return max(bound, round_trip) if upper else min(bound, round_trip)
+
+    @property
     def min_temp(self) -> float:
         """Return the lowest accepted setpoint."""
-        bounds = temperature_range(self._setpoint_key, self.properties)
-        return float(bounds[0]) if bounds else 34.0
+        return self._widened(self._bounds()[0], upper=False)
 
     @property
     def max_temp(self) -> float:
         """Return the highest accepted setpoint."""
-        bounds = temperature_range(self._setpoint_key, self.properties)
-        return float(bounds[1]) if bounds else 42.0
+        return self._widened(self._bounds()[1], upper=True)
 
     @property
     def native_current_temperature(self) -> float | None:
@@ -148,11 +189,13 @@ class SubZeroClimate(SubZeroEntity, ClimateEntity):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
+        # Home Assistant has already converted the request into native units.
         value = int(round(temperature))
-        if not self.min_temp <= value <= self.max_temp:
+        low, high = self._bounds()
+        if not low <= value <= high:
             raise ServiceValidationError(
                 f"This appliance accepts setpoints between "
-                f"{int(self.min_temp)} and {int(self.max_temp)} F."
+                f"{int(low)} and {int(high)} {self.native_temperature_unit}."
             )
         await self.coordinator.async_set_property(
             self._device_id, self._setpoint_key, value

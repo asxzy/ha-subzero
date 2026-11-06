@@ -6,6 +6,7 @@ import pathlib
 from custom_components.subzero.capabilities import (
     appliance_family,
     appliance_type_parts,
+    appliance_unit,
     temperature_range,
     zones,
 )
@@ -96,3 +97,24 @@ def test_crisper_tracks_refrigerator():
     assert temperature_range("crisp_set_temp", props) == (36, 40)
     props["ref_set_temp"] = 42
     assert temperature_range("crisp_set_temp", props) == (40, 42)
+
+
+def test_celsius_bounds_stay_inside_the_measured_band():
+    """A Celsius appliance gets the same physical band, rounded inward.
+
+    Every limit is measured in Fahrenheit, so converting an endpoint must not
+    land outside what the cloud was observed to accept.
+    """
+    assert appliance_unit((-5, 5), "C") == (-20, -15)
+    assert appliance_unit((40, 65), "C") == (5, 18)
+    assert appliance_unit((34, 42), "C") == (2, 5)
+    # A Fahrenheit appliance is passed through untouched.
+    assert appliance_unit((34, 42), "F") == (34.0, 42.0)
+    assert appliance_unit((34, 42), None) == (34.0, 42.0)
+
+
+def test_crisper_celsius_uses_a_celsius_refrigerator_setpoint():
+    """The crisper band follows a sibling setpoint reported in Celsius."""
+    props = {"appliance_type": "17.17.4.0", "ref_set_temp": 4}
+    # 4 C is 39.2 F, so the crisper band is 37.2-41.2 F, reported as 3-5 C.
+    assert temperature_range("crisp_set_temp", props, "C") == (37, 41)

@@ -15,6 +15,7 @@ class names (``S17C4V0Metadata``).
 
 from __future__ import annotations
 
+import math
 from typing import Any, Final
 
 # Zone setpoint properties. Each behaves as one climate zone.
@@ -146,12 +147,14 @@ def zones(properties: dict[str, Any]) -> dict[str, str]:
 
 
 def temperature_range(
-    key: str, properties: dict[str, Any]
+    key: str, properties: dict[str, Any], unit: str | None = "F"
 ) -> tuple[int, int] | None:
-    """Return the accepted setpoint range for a zone.
+    """Return the accepted setpoint range for a zone, in Fahrenheit.
 
     Limits were measured against live appliances: each candidate value was
-    written to the cloud and the accept/reject result recorded.
+    written to the cloud and the accept/reject result recorded. ``unit`` is the
+    scale the appliance reports its setpoints in; only the crisper range depends
+    on a sibling setpoint, and that value is converted back to Fahrenheit first.
     """
     if key == "frz_set_temp":
         return -5, 5
@@ -161,10 +164,12 @@ def temperature_range(
         # The crisper follows the refrigerator setpoint within two degrees.
         # Measured: at ref_set_temp 38 the cloud accepted 36-40, and at 42 it
         # accepted 40-42 because 44 is past the refrigerator's own upper bound.
-        bounds = temperature_range("ref_set_temp", properties)
+        bounds = temperature_range("ref_set_temp", properties, unit)
         refrigerator = properties.get("ref_set_temp")
         if bounds is None or not isinstance(refrigerator, (int, float)):
             return None
+        if unit == "C":
+            refrigerator = refrigerator * 9 / 5 + 32
         lower = max(bounds[0], int(refrigerator) - 2)
         upper = min(bounds[1], int(refrigerator) + 2)
         return (lower, upper) if lower <= upper else None
@@ -183,6 +188,23 @@ def temperature_range(
                 return 34, 45
         return 34, 42
     return None
+
+
+def appliance_unit(bounds: tuple[int, int], unit: str | None) -> tuple[float, float]:
+    """Express a measured Fahrenheit range in the appliance's own unit.
+
+    Every limit in :func:`temperature_range` was measured in Fahrenheit against
+    live hardware. An appliance that reports Celsius carries the same physical
+    band on its own scale, so the endpoints are rounded inward to whole degrees:
+    the lower bound up and the upper bound down. A whole Celsius degree is
+    coarser than a whole Fahrenheit one, so no value outside the measured band
+    can be produced.
+    """
+    if unit != "C":
+        return float(bounds[0]), float(bounds[1])
+    lower = math.ceil((bounds[0] - 32) * 5 / 9)
+    upper = math.floor((bounds[1] - 32) * 5 / 9)
+    return float(lower), float(upper)
 
 
 def supports(properties: dict[str, Any], key: str) -> bool:

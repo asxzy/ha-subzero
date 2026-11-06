@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import pathlib
 import sys
@@ -56,7 +57,9 @@ def patch_cloud(monkeypatch):
         ]
 
     async def fake_state(self, device_id):
-        return SNAPSHOTS[device_id]
+        # Return a copy: tests mutate snapshots to exercise other readings, and
+        # the module-level fixtures must not carry that into the next test.
+        return copy.deepcopy(SNAPSHOTS[device_id])
 
     async def fake_noop(self, *args, **kwargs):
         return None

@@ -59,6 +59,108 @@ async def test_climate_limits_come_from_appliance(hass: HomeAssistant, entry):
     assert round(fridge.attributes["max_temp"], 1) == 5.6
 
 
+async def test_celsius_appliance_reports_celsius_bounds(hass: HomeAssistant, entry):
+    """A unit that reports Celsius must be read and written on that scale.
+
+    Every measured limit is in Fahrenheit, so the band is converted rather than
+    the value being treated as Fahrenheit.
+    """
+    coordinator = entry.runtime_data
+    refrigerator = next(
+        state
+        for state in coordinator.data.appliances.values()
+        if state.appliance.name == "36 Refrigerator"
+    )
+    refrigerator.appliance.temperature_unit = "C"
+    refrigerator.properties["ref_set_temp"] = 4
+    refrigerator.properties["crisp_set_temp"] = 2
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+
+    climate = hass.states.get("climate.36_refrigerator")
+    assert climate is not None
+    # 34-42 F is 1.1-5.6 C; the endpoints round inward to 2-5.
+    assert climate.attributes["min_temp"] == 2
+    assert climate.attributes["max_temp"] == 5
+    assert climate.attributes["temperature_unit"] == "\u00b0C"
+
+
+async def test_celsius_setpoint_is_written_in_celsius(
+    hass: HomeAssistant, entry, monkeypatch
+):
+    """The value sent to the cloud is on the appliance's own scale."""
+    coordinator = entry.runtime_data
+    refrigerator = next(
+        state
+        for state in coordinator.data.appliances.values()
+        if state.appliance.name == "36 Refrigerator"
+    )
+    refrigerator.appliance.temperature_unit = "C"
+    refrigerator.properties["ref_set_temp"] = 4
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+
+    written: list[tuple[str, str, object]] = []
+
+    async def record(device_id, key, value):
+        written.append((device_id, key, value))
+
+    monkeypatch.setattr(coordinator, "async_set_property", record)
+    # Home Assistant is configured for metric here, so 4 means 4 C, which is
+    # inside the converted 2-5 C band and must reach the cloud unchanged.
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {"entity_id": "climate.36_refrigerator", "temperature": 4},
+        blocking=True,
+    )
+    assert written == [("dev-fridge", "ref_set_temp", 4)]
+
+
+async def test_advertised_bounds_accept_what_they_display(hass: HomeAssistant, entry):
+    """Every displayed setpoint must survive a round trip back to native units.
+
+    Home Assistant validates the request against min_temp/max_temp after
+    converting it into native units, so a bound rounded for display can fall
+    just outside the range it was advertised from.
+    """
+    from homeassistant.const import ATTR_TEMPERATURE
+
+    written: list[tuple[str, str, object]] = []
+
+    async def record(device_id, key, value):
+        written.append((device_id, key, value))
+
+    coordinator = entry.runtime_data
+    coordinator.async_set_property = record
+    for entity_id in (
+        "climate.36_refrigerator",
+        "climate.36_freezer",
+        "climate.main_wine_zone_1",
+        "climate.upper_beverage",
+    ):
+        state = hass.states.get(entity_id)
+        for bound in ("min_temp", "max_temp"):
+            shown = state.attributes[bound]
+            await hass.services.async_call(
+                "climate",
+                "set_temperature",
+                {"entity_id": entity_id, ATTR_TEMPERATURE: shown},
+                blocking=True,
+            )
+    assert written, "each advertised bound should reach the appliance"
+
+    # The values written are whole native degrees inside the measured band.
+    for _, key, value in written:
+        assert isinstance(value, int)
+        if key == "frz_set_temp":
+            assert -5 <= value <= 5
+        elif key in ("wine_set_temp", "wine2_set_temp"):
+            assert 40 <= value <= 65
+        else:
+            assert 34 <= value <= 55
+
+
 async def test_climate_hvac_mode(hass: HomeAssistant, entry):
     for state in hass.states.async_all("climate"):
         assert state.state == "cool"
@@ -463,3 +565,42 @@ async def test_unload(entry, hass: HomeAssistant):
     climates = hass.states.async_all("climate")
     assert climates
     assert all(state.state == STATE_UNAVAILABLE for state in climates)
+
+
+async def test_celsius_temperature_sensor_keeps_its_scale(
+    hass: HomeAssistant, entry, monkeypatch
+):
+    """A sensor on a Celsius appliance must not be relabelled as Fahrenheit.
+
+    The appliance's scale is only known at setup, and entities are created from
+    the properties the snapshot reports, so the entry is reloaded after the
+    snapshot gains a reading.
+    """
+    from custom_components.subzero.api import Appliance, SubZeroClient
+
+    from .conftest import APPLIANCES, SNAPSHOTS, load
+
+    snapshot = load("fridge.json")
+    snapshot["ref_display_temp"] = 4
+    monkeypatch.setitem(SNAPSHOTS, "dev-fridge", snapshot)
+
+    async def celsius_appliances(self):
+        return [
+            Appliance(
+                device_id,
+                name,
+                appliance_type,
+                "C" if device_id == "dev-fridge" else unit,
+            )
+            for device_id, name, appliance_type, unit, _ in APPLIANCES
+        ]
+
+    monkeypatch.setattr(SubZeroClient, "async_get_appliances", celsius_appliances)
+
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.36_refrigerator_refrigerator_temperature")
+    assert state is not None
+    assert state.attributes["unit_of_measurement"] == "\u00b0C"
+    assert float(state.state) == 4

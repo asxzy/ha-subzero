@@ -312,6 +312,20 @@ class SubZeroSensor(SubZeroEntity, SensorEntity):
         self._attr_unique_id = f"{device_id}_{description.key}"
 
     @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit the appliance reports temperatures in.
+
+        The cloud states each appliance's own scale, so a unit that reports
+        Celsius is published in Celsius and Home Assistant converts for
+        display. Non-temperature sensors keep their description's unit.
+        """
+        if self.entity_description.device_class is not SensorDeviceClass.TEMPERATURE:
+            return self.entity_description.native_unit_of_measurement
+        if self.appliance.temperature_unit == "C":
+            return UnitOfTemperature.CELSIUS
+        return UnitOfTemperature.FAHRENHEIT
+
+    @property
     def native_value(self) -> Any:
         """Return the property value, hiding sentinel readings."""
         key = self.entity_description.key
