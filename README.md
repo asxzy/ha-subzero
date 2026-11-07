@@ -9,7 +9,7 @@ changes, and a periodic poll only recovers anything a dropped connection missed.
 
 <p align="center">
   <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=asxzy&repository=ha-subzero&category=integration">
-    <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open this repository in HACS, or the Marketplace in Home Assistant 2026.11+">
+    <img src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg" alt="Add this repository to HACS as a custom repository">
   </a>
 </p>
 
@@ -39,9 +39,9 @@ Requires Home Assistant 2026.11 or newer.
 2. Restart Home Assistant.
 3. Add the integration and sign in with your Sub-Zero Group account.
 
-Or install it as a custom repository with HACS, or with the Marketplace in Home
-Assistant 2026.11 and newer. Use the button at the top of this page to add it in
-one step.
+Alternatively, add this repository in HACS as a custom repository, or via the
+Marketplace built into Home Assistant 2026.11 and newer. Either way, use the
+button at the top of this page to add it in one step.
 
 ## Setup
 
